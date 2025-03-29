@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Magic, Edit, Palette, Download, ArrowRight } from "lucide-react";
+import { BookOpen, WandSparkles, Edit, Palette, Download, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
@@ -41,7 +41,7 @@ export default function Home() {
                   className="rounded-xl shadow-xl z-10 relative"
                 />
                 <div className="absolute -top-4 -right-4 bg-[#FFE66D] p-3 rounded-full shadow-lg z-20 transform rotate-12">
-                  <Magic className="h-6 w-6 text-[#2D3436]" />
+                  <WandSparkles className="h-6 w-6 text-[#2D3436]" />
                 </div>
                 <div className="absolute -bottom-4 -left-4 bg-white p-3 rounded-xl shadow-lg z-20">
                   <p className="text-sm font-bold text-[#FF6B6B]">Ready in minutes!</p>

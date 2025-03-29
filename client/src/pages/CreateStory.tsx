@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { AGE_RANGES, AgeRange, ART_STYLES, ArtStyle, LAYOUT_TYPES, LayoutType, STORY_TYPES, StoryType, storyFormSchema } from "@shared/schema";
+import { AGE_RANGES, AgeRange, ART_STYLES, ArtStyle, LAYOUT_TYPES, LayoutType, STORY_TYPES, StoryType, storyFormSchema, StoryFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, ArrowRight, Loader2, MagicWand } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, WandSparkles } from "lucide-react";
 import StoryTypeCard from "@/components/StoryTypeCard";
 import ArtStyleCard from "@/components/ArtStyleCard";
 
@@ -42,7 +42,7 @@ export default function CreateStory() {
   });
 
   const { mutate: createStory, isPending } = useMutation({
-    mutationFn: async (data: typeof form.getValues) => {
+    mutationFn: async (data: StoryFormData) => {
       const response = await apiRequest("POST", "/api/stories", data);
       return response.json();
     },
@@ -63,8 +63,8 @@ export default function CreateStory() {
     }
   });
 
-  const onSubmit = (data: typeof form.getValues) => {
-    createStory(data);
+  const onSubmit = () => {
+    createStory(form.getValues());
   };
 
   const nextStep = () => {
@@ -330,7 +330,7 @@ export default function CreateStory() {
           className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl"
         >
           Generate My Story
-          <MagicWand className="ml-2 h-5 w-5" />
+          <WandSparkles className="ml-2 h-5 w-5" />
         </Button>
       </div>
     </div>
@@ -392,7 +392,7 @@ export default function CreateStory() {
         </Button>
         
         <Button 
-          onClick={() => onSubmit(form.getValues())}
+          onClick={onSubmit}
           disabled={isPending}
           className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl"
         >
@@ -404,7 +404,7 @@ export default function CreateStory() {
           ) : (
             <>
               Create My Storybook
-              <MagicWand className="ml-2 h-5 w-5" />
+              <WandSparkles className="ml-2 h-5 w-5" />
             </>
           )}
         </Button>
