@@ -1,4 +1,6 @@
 import { stories, users, type User, type InsertUser, type Story, type InsertStory } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 // Storage interface for CRUD operations
 export interface IStorage {
@@ -14,68 +16,61 @@ export interface IStorage {
   deleteStory(id: number): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private stories: Map<number, Story>;
-  private userCurrentId: number;
-  private storyCurrentId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.stories = new Map();
-    this.userCurrentId = 1;
-    this.storyCurrentId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userCurrentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   // Story operations
   async getStories(): Promise<Story[]> {
-    return Array.from(this.stories.values()).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return db.select().from(stories).orderBy(desc(stories.createdAt));
   }
 
   async getStory(id: number): Promise<Story | undefined> {
-    return this.stories.get(id);
+    const [story] = await db.select().from(stories).where(eq(stories.id, id));
+    return story || undefined;
   }
 
   async createStory(insertStory: InsertStory): Promise<Story> {
-    const id = this.storyCurrentId++;
-    const createdAt = new Date();
-    const story: Story = { ...insertStory, id, createdAt };
-    this.stories.set(id, story);
+    const [story] = await db
+      .insert(stories)
+      .values(insertStory)
+      .returning();
     return story;
   }
 
   async updateStory(id: number, partial: Partial<InsertStory>): Promise<Story | undefined> {
-    const story = this.stories.get(id);
-    if (!story) return undefined;
-    
-    const updatedStory: Story = { ...story, ...partial };
-    this.stories.set(id, updatedStory);
+    const [updatedStory] = await db
+      .update(stories)
+      .set(partial)
+      .where(eq(stories.id, id))
+      .returning();
     return updatedStory;
   }
 
   async deleteStory(id: number): Promise<boolean> {
-    return this.stories.delete(id);
+    const [deletedStory] = await db
+      .delete(stories)
+      .where(eq(stories.id, id))
+      .returning();
+    return !!deletedStory;
   }
 }
 
-export const storage = new MemStorage();
+// Replace MemStorage with DatabaseStorage
+export const storage = new DatabaseStorage();
