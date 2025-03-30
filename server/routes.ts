@@ -60,13 +60,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entities = generatedStory.entities || [];
       const entityGenerationIds: Record<string, string> = {};
       
-      // Generate images for each page with entity consistency
+      /**
+       * Generate illustrations for each page of the story with enhanced entity consistency
+       * This is a critical section that ensures visual continuity across all story pages
+       * by tracking entity appearances and passing their descriptions to the image generator
+       */
       const pages: StoryPage[] = await Promise.all(
         generatedStory.pages.map(async (page, index) => {
-          // Get entities that appear on this page
+          // Extract the entities that appear on this specific page
           const pageEntities = page.entities || [];
           
-          // Create a map of entity reference IDs for this page
+          // Create a mapping of entity IDs to their DALL-E generation IDs for visual consistency
+          // This helps DALL-E maintain the same visual appearance for recurring characters/objects
           const pageEntityRefs: Record<string, string> = {};
           pageEntities.forEach(entityId => {
             if (entityGenerationIds[entityId]) {
@@ -74,32 +79,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
           
-          // Get the full entity objects for this page to enhance prompt
+          // Get the complete entity objects (with descriptions) for this page
+          // This enhances the prompt with detailed descriptions of each entity
           const relevantEntities = entities
             .filter(entity => pageEntities.includes(entity.id));
             
+          // Log page entity information for debugging and monitoring
           console.log(`Page ${index + 1} has ${relevantEntities.length} entities: ` + 
             relevantEntities.map(e => e.name).join(", "));
           
-          // Generate image with enhanced entity consistency
+          // Generate an illustration with our enhanced entity consistency approach
+          // We pass full entity objects to include their descriptions in the prompt
           const imageResult = await generateImage({
-            prompt: page.imagePrompt,
-            entityReferenceIds: pageEntityRefs,
-            artStyle,
-            entities: relevantEntities
+            prompt: page.imagePrompt,               // Base image description
+            entityReferenceIds: pageEntityRefs,     // References to maintain visual consistency
+            artStyle,                               // User-selected art style
+            entities: relevantEntities              // Complete entity objects with descriptions
           });
           
+          // Variables to store the generation results
           let imageUrl: string;
           let revisedPrompt: string | undefined;
           
-          // Handle different return types from generateImage
+          // Handle different return types from the generateImage function
           if (typeof imageResult === 'string') {
+            // Simple string result (just the URL)
             imageUrl = imageResult;
           } else {
+            // Complex result object with metadata
             imageUrl = imageResult.url;
             revisedPrompt = imageResult.revised_prompt;
             
-            // Store any new generation IDs for future pages
+            // Store any new generation IDs for future page references
+            // This is how we maintain visual consistency across the storybook
             if (imageResult.generatedIds) {
               Object.entries(imageResult.generatedIds).forEach(([entityId, genId]) => {
                 entityGenerationIds[entityId] = genId;
@@ -107,12 +119,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
+          // Return the complete page object with generated image
           return {
-            pageNumber: index + 1,
-            text: page.text,
-            imageUrl,
+            pageNumber: index + 1,                           // Sequential page number
+            text: page.text,                                 // Story text for this page
+            imageUrl,                                        // URL of the generated illustration
             imagePrompt: revisedPrompt || page.imagePrompt, // Store the revised prompt if available
-            entities: pageEntities
+            entities: pageEntities                          // IDs of entities appearing on this page
           };
         })
       );
@@ -206,22 +219,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Generate an image for a story page with consistency
+  /**
+   * API endpoint for generating a single illustration with entity consistency
+   * This endpoint can be used independently to generate one-off images
+   * while still maintaining visual consistency with previously generated entities.
+   * Enhanced to accept full entity objects with descriptions for better consistency.
+   */
   app.post("/api/generate-image", async (req: Request, res: Response) => {
     try {
+      // Define validation schema for the request body
       const schema = z.object({
-        prompt: z.string().min(1),
-        entityReferenceIds: z.record(z.string()).optional(),
-        artStyle: z.string().optional(),
-        entities: z.array(z.object({
-          id: z.string(),
-          name: z.string(),
-          type: z.enum(['character', 'location', 'object']),
-          description: z.string(),
-          generationId: z.string().optional()
+        prompt: z.string().min(1),                   // Required base prompt describing the image
+        entityReferenceIds: z.record(z.string()).optional(), // Optional map of entity IDs to DALL-E reference IDs
+        artStyle: z.string().optional(),             // Optional art style override
+        entities: z.array(z.object({                 // Optional array of full entity objects
+          id: z.string(),                            // Unique identifier for the entity
+          name: z.string(),                          // Display name of the entity
+          type: z.enum(['character', 'location', 'object']), // Entity type classification
+          description: z.string(),                   // Detailed description for consistency
+          generationId: z.string().optional()        // Optional DALL-E reference ID
         })).optional()
       });
       
+      // Validate the incoming request data
       const parsedBody = schema.safeParse(req.body);
       if (!parsedBody.success) {
         return res.status(400).json({ 
@@ -230,24 +250,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Extract validated data
       const { prompt, entityReferenceIds, artStyle, entities } = parsedBody.data;
       
-      // If entity details are provided, log them for debugging
+      // Log entity information for debugging and monitoring purposes
       if (entities && entities.length > 0) {
         console.log(`Generating image with ${entities.length} entities: ` + 
           entities.map(e => `${e.name} (${e.type})`).join(", "));
       }
       
-      // Generate image with all available entity information
+      // Call our enhanced image generation function with all available entity information
+      // This ensures consistent visuals across independently generated illustrations
       const imageResult = await generateImage({
-        prompt,
-        entityReferenceIds: entityReferenceIds || {},
-        artStyle: artStyle || 'colorful',
-        entities: entities || []
+        prompt,                                    // Base image description
+        entityReferenceIds: entityReferenceIds || {}, // Entity reference mappings (if any)
+        artStyle: artStyle || 'colorful',           // Art style (with fallback)
+        entities: entities || []                    // Full entity objects for prompt enhancement
       });
       
+      // Return the generation result to the client
       return res.json(imageResult);
     } catch (error) {
+      // Comprehensive error handling with detailed logging
       console.error("Error generating image:", error);
       return res.status(500).json({ 
         message: "Failed to generate image", 

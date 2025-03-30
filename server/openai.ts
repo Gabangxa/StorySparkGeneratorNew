@@ -172,24 +172,44 @@ export async function generateStory({
   }
 }
 
+/**
+ * Options interface for the image generation function
+ * Provides details about what to include in the generated image
+ */
 interface GenerateImageOptions {
-  prompt: string;
-  entityReferenceIds?: { [key: string]: string }; // Map of entity IDs to DALL-E generation IDs
-  artStyle?: string; // Art style for consistent look
-  entities?: StoryEntity[]; // Story entities to highlight in the prompt
+  prompt: string;                                  // Base prompt describing the image to be generated
+  entityReferenceIds?: { [key: string]: string };  // Map of entity IDs to DALL-E generation IDs for consistency
+  artStyle?: string;                               // Artistic style for the illustration (anime, watercolor, etc.)
+  entities?: StoryEntity[];                        // Story entities to highlight in the prompt for consistency
 }
 
+/**
+ * Result interface returned by the image generation function
+ * Contains the image URL and optional metadata about the generation process
+ */
 interface GenerateImageResult {
-  url: string;
-  generatedIds?: { [key: string]: string }; // Entity IDs mapped to their generation IDs
-  revised_prompt?: string; // The actual prompt sent to DALL-E after enhancements
+  url: string;                                     // URL of the generated image
+  generatedIds?: { [key: string]: string };        // Entity IDs mapped to their generation IDs for future reference
+  revised_prompt?: string;                         // The actual prompt sent to DALL-E after enhancements
 }
 
-// Generate an image for a story page with character consistency
+/**
+ * Generate an illustration for a story page with enhanced character/entity consistency
+ * 
+ * This function takes either a simple prompt string or a complex options object
+ * and generates a children's book illustration using DALL-E 3.
+ * 
+ * When provided with entity information, it enhances the prompt to maintain
+ * visual consistency of characters, locations, and objects across illustrations.
+ * 
+ * @param prompt - Simple string prompt or GenerateImageOptions object
+ * @returns Either a direct image URL string or a GenerateImageResult object with metadata
+ */
 export async function generateImage(
   prompt: string | GenerateImageOptions
 ): Promise<string | GenerateImageResult> {
   try {
+    // Initialize variables with default values
     let finalPrompt: string;
     let entityReferenceIds: { [key: string]: string } = {};
     let artStyle: string = 'colorful';
@@ -197,9 +217,10 @@ export async function generateImage(
     
     // Handle both simple string prompts and complex options
     if (typeof prompt === 'string') {
+      // Simple case: just a string prompt
       finalPrompt = prompt;
     } else {
-      // Extract options
+      // Complex case: extract all options from the object
       const options = prompt;
       finalPrompt = options.prompt;
       entityReferenceIds = options.entityReferenceIds || {};
@@ -207,19 +228,19 @@ export async function generateImage(
       entities = options.entities || [];
     }
 
-    // Format the art style for the prompt
+    // Format the art style for the prompt (replace underscores with spaces)
     const formattedArtStyle = artStyle.replace(/_/g, ' ');
     
-    // Enhance the prompt with entity details if available
+    // Enhance the prompt with entity details if available for better consistency
     if (entities.length > 0) {
-      // Extract characters, locations, and objects
+      // Categorize entities by type for better organization in the prompt
       const characters = entities.filter(e => e.type === 'character');
       const locations = entities.filter(e => e.type === 'location');
       const objects = entities.filter(e => e.type === 'object');
       
       let enhancedPrompt = finalPrompt;
       
-      // Add character details
+      // Add character details to the prompt
       if (characters.length > 0) {
         enhancedPrompt += "\n\nInclude these characters with consistent appearances:";
         characters.forEach(char => {
@@ -227,7 +248,7 @@ export async function generateImage(
         });
       }
       
-      // Add location details
+      // Add location details to the prompt
       if (locations.length > 0) {
         enhancedPrompt += "\n\nInclude these locations with consistent appearances:";
         locations.forEach(loc => {
@@ -235,7 +256,7 @@ export async function generateImage(
         });
       }
       
-      // Add object details
+      // Add object details to the prompt
       if (objects.length > 0) {
         enhancedPrompt += "\n\nInclude these objects with consistent appearances:";
         objects.forEach(obj => {
@@ -243,10 +264,12 @@ export async function generateImage(
         });
       }
       
+      // Update the prompt with entity information
       finalPrompt = enhancedPrompt;
     }
     
-    // Prepare the final prompt with formatting and style instructions
+    // Create a comprehensive prompt with formatting and style instructions
+    // This wrapping helps DALL-E understand the context and requirements
     const wrappedPrompt = `
 Create a high-quality children's book illustration in ${formattedArtStyle} style with a landscape format.
 Make all visual elements consistent with previous illustrations in the story.
@@ -257,35 +280,37 @@ ${finalPrompt}
 The illustration should be bright, engaging, and appropriate for children's books with clear details.
 `;
 
+    // Log the prompt for debugging purposes
     console.log("Generating image with prompt:", wrappedPrompt);
     
-    // Generate the image
+    // Call the OpenAI API to generate the image
     const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: wrappedPrompt,
-      n: 1,
-      size: "1024x1792", // Landscape format
-      quality: "hd",
-      style: "vivid",
+      model: "dall-e-3",         // Use DALL-E 3 for highest quality illustrations
+      prompt: wrappedPrompt,     // The enhanced prompt
+      n: 1,                      // Generate one image
+      size: "1024x1792",         // Landscape format optimal for storybooks
+      quality: "hd",             // High-definition quality
+      style: "vivid",            // Vivid style for children's illustrations
       // Include reference IDs if provided to maintain character consistency
       ...(Object.keys(entityReferenceIds).length > 0 && {
         reference_image_ids: Object.values(entityReferenceIds)
       })
     });
 
+    // Validate the response
     if (!response.data[0].url) {
       throw new Error("No image URL returned from OpenAI");
     }
     
-    // Extract the revised_prompt if available
+    // Extract the revised prompt if available (DALL-E sometimes modifies prompts)
     const revised_prompt = response.data[0].revised_prompt || '';
     
-    // If this was a simple string prompt, just return the URL
+    // For simple string prompts, just return the URL
     if (typeof prompt === 'string') {
       return response.data[0].url;
     }
     
-    // For complex options, return both URL and additional information
+    // For complex options, return a complete result object with metadata
     return {
       url: response.data[0].url,
       revised_prompt: revised_prompt,
@@ -297,6 +322,7 @@ The illustration should be bright, engaging, and appropriate for children's book
       }
     };
   } catch (error) {
+    // Comprehensive error handling
     console.error("Error generating image:", error);
     throw new Error(`Failed to generate image: ${error instanceof Error ? error.message : String(error)}`);
   }
