@@ -176,11 +176,13 @@ interface GenerateImageOptions {
   prompt: string;
   entityReferenceIds?: { [key: string]: string }; // Map of entity IDs to DALL-E generation IDs
   artStyle?: string; // Art style for consistent look
+  entities?: StoryEntity[]; // Story entities to highlight in the prompt
 }
 
 interface GenerateImageResult {
   url: string;
   generatedIds?: { [key: string]: string }; // Entity IDs mapped to their generation IDs
+  revised_prompt?: string; // The actual prompt sent to DALL-E after enhancements
 }
 
 // Generate an image for a story page with character consistency
@@ -190,24 +192,81 @@ export async function generateImage(
   try {
     let finalPrompt: string;
     let entityReferenceIds: { [key: string]: string } = {};
+    let artStyle: string = 'colorful';
+    let entities: StoryEntity[] = [];
     
     // Handle both simple string prompts and complex options
     if (typeof prompt === 'string') {
-      finalPrompt = `Children's book illustration in landscape format. ${prompt}`;
+      finalPrompt = prompt;
     } else {
-      // Build a prompt that references previous generations for consistency
+      // Extract options
       const options = prompt;
-      finalPrompt = `Children's book illustration in ${options.artStyle || 'colorful'} style, landscape format. ${options.prompt}`;
+      finalPrompt = options.prompt;
       entityReferenceIds = options.entityReferenceIds || {};
+      artStyle = options.artStyle || 'colorful';
+      entities = options.entities || [];
     }
 
+    // Format the art style for the prompt
+    const formattedArtStyle = artStyle.replace(/_/g, ' ');
+    
+    // Enhance the prompt with entity details if available
+    if (entities.length > 0) {
+      // Extract characters, locations, and objects
+      const characters = entities.filter(e => e.type === 'character');
+      const locations = entities.filter(e => e.type === 'location');
+      const objects = entities.filter(e => e.type === 'object');
+      
+      let enhancedPrompt = finalPrompt;
+      
+      // Add character details
+      if (characters.length > 0) {
+        enhancedPrompt += "\n\nInclude these characters with consistent appearances:";
+        characters.forEach(char => {
+          enhancedPrompt += `\n- ${char.name}: ${char.description}`;
+        });
+      }
+      
+      // Add location details
+      if (locations.length > 0) {
+        enhancedPrompt += "\n\nInclude these locations with consistent appearances:";
+        locations.forEach(loc => {
+          enhancedPrompt += `\n- ${loc.name}: ${loc.description}`;
+        });
+      }
+      
+      // Add object details
+      if (objects.length > 0) {
+        enhancedPrompt += "\n\nInclude these objects with consistent appearances:";
+        objects.forEach(obj => {
+          enhancedPrompt += `\n- ${obj.name}: ${obj.description}`;
+        });
+      }
+      
+      finalPrompt = enhancedPrompt;
+    }
+    
+    // Prepare the final prompt with formatting and style instructions
+    const wrappedPrompt = `
+Create a high-quality children's book illustration in ${formattedArtStyle} style with a landscape format.
+Make all visual elements consistent with previous illustrations in the story.
+Ensure characters, locations, and objects maintain their exact same appearance across all illustrations.
+
+${finalPrompt}
+
+The illustration should be bright, engaging, and appropriate for children's books with clear details.
+`;
+
+    console.log("Generating image with prompt:", wrappedPrompt);
+    
     // Generate the image
     const response = await openai.images.generate({
       model: "dall-e-3",
-      prompt: finalPrompt,
+      prompt: wrappedPrompt,
       n: 1,
-      size: "1024x1024",
-      quality: "standard",
+      size: "1024x1792", // Landscape format
+      quality: "hd",
+      style: "vivid",
       // Include reference IDs if provided to maintain character consistency
       ...(Object.keys(entityReferenceIds).length > 0 && {
         reference_image_ids: Object.values(entityReferenceIds)
@@ -218,18 +277,23 @@ export async function generateImage(
       throw new Error("No image URL returned from OpenAI");
     }
     
+    // Extract the revised_prompt if available
+    const revised_prompt = response.data[0].revised_prompt || '';
+    
     // If this was a simple string prompt, just return the URL
     if (typeof prompt === 'string') {
       return response.data[0].url;
     }
     
-    // For complex options, return both URL and generation IDs for future reference
+    // For complex options, return both URL and additional information
     return {
       url: response.data[0].url,
+      revised_prompt: revised_prompt,
       generatedIds: {
-        // Include any new generation IDs that might be used for future references
-        // Note: This is a placeholder as the OpenAI API doesn't directly expose generation IDs
-        // In a real implementation, we would extract relevant IDs from the response
+        // Store entity IDs mapped to DALL-E's internal reference system
+        // In a production system, we would extract these from OpenAI's response
+        // For now, we maintain the existing dictionary
+        ...entityReferenceIds
       }
     };
   } catch (error) {

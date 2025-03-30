@@ -74,20 +74,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
           
-          // Generate image with entity consistency
+          // Get the full entity objects for this page to enhance prompt
+          const relevantEntities = entities
+            .filter(entity => pageEntities.includes(entity.id));
+            
+          console.log(`Page ${index + 1} has ${relevantEntities.length} entities: ` + 
+            relevantEntities.map(e => e.name).join(", "));
+          
+          // Generate image with enhanced entity consistency
           const imageResult = await generateImage({
             prompt: page.imagePrompt,
             entityReferenceIds: pageEntityRefs,
-            artStyle
+            artStyle,
+            entities: relevantEntities
           });
           
           let imageUrl: string;
+          let revisedPrompt: string | undefined;
           
           // Handle different return types from generateImage
           if (typeof imageResult === 'string') {
             imageUrl = imageResult;
           } else {
             imageUrl = imageResult.url;
+            revisedPrompt = imageResult.revised_prompt;
             
             // Store any new generation IDs for future pages
             if (imageResult.generatedIds) {
@@ -101,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pageNumber: index + 1,
             text: page.text,
             imageUrl,
-            imagePrompt: page.imagePrompt,
+            imagePrompt: revisedPrompt || page.imagePrompt, // Store the revised prompt if available
             entities: pageEntities
           };
         })
@@ -202,7 +212,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schema = z.object({
         prompt: z.string().min(1),
         entityReferenceIds: z.record(z.string()).optional(),
-        artStyle: z.string().optional()
+        artStyle: z.string().optional(),
+        entities: z.array(z.object({
+          id: z.string(),
+          name: z.string(),
+          type: z.enum(['character', 'location', 'object']),
+          description: z.string(),
+          generationId: z.string().optional()
+        })).optional()
       });
       
       const parsedBody = schema.safeParse(req.body);
@@ -213,20 +230,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { prompt, entityReferenceIds, artStyle } = parsedBody.data;
+      const { prompt, entityReferenceIds, artStyle, entities } = parsedBody.data;
       
-      // If entity reference IDs are provided, use them for character consistency
-      let imageResult;
-      if (entityReferenceIds || artStyle) {
-        imageResult = await generateImage({
-          prompt,
-          entityReferenceIds,
-          artStyle
-        });
-      } else {
-        // Simple prompt without entity references
-        imageResult = await generateImage(prompt);
+      // If entity details are provided, log them for debugging
+      if (entities && entities.length > 0) {
+        console.log(`Generating image with ${entities.length} entities: ` + 
+          entities.map(e => `${e.name} (${e.type})`).join(", "));
       }
+      
+      // Generate image with all available entity information
+      const imageResult = await generateImage({
+        prompt,
+        entityReferenceIds: entityReferenceIds || {},
+        artStyle: artStyle || 'colorful',
+        entities: entities || []
+      });
       
       return res.json(imageResult);
     } catch (error) {
