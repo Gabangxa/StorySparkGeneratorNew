@@ -25,11 +25,26 @@ export type AgeRange = typeof AGE_RANGES[number];
 export const LAYOUT_TYPES = ["side_by_side", "picture_top"] as const;
 export type LayoutType = typeof LAYOUT_TYPES[number];
 
+// Character, location, or object that should maintain visual consistency
+export type StoryEntity = {
+  id: string;
+  name: string;
+  type: 'character' | 'location' | 'object';
+  description: string;
+  generationId?: string; // DALL-E generation ID for visual consistency
+};
+
+export type StoryEntityWithAppearances = StoryEntity & {
+  appearsInPages: number[];
+};
+
 // The pages of a story
 export type StoryPage = {
   pageNumber: number;
   text: string;
   imageUrl: string;
+  imagePrompt?: string; // Store the prompt used to generate the image
+  entities?: string[]; // IDs of entities that appear on this page
 };
 
 // Stories schema
@@ -42,6 +57,7 @@ export const stories = pgTable("stories", {
   artStyle: text("art_style").notNull(),
   layoutType: text("layout_type").notNull(),
   pages: jsonb("pages").notNull().$type<StoryPage[]>(),
+  entities: jsonb("entities").$type<StoryEntity[]>(), // Track characters, locations, objects
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

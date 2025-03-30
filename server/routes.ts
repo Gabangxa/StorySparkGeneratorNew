@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { storyFormSchema, type StoryPage } from "@shared/schema";
+import { storyFormSchema, type StoryPage, type StoryEntity, type StoryEntityWithAppearances } from "@shared/schema";
 import { generateStory, generateImage } from "./openai";
 import { z } from "zod";
 
@@ -56,18 +56,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         numberOfPages: 5 // Fixed number of pages for now
       });
 
-      // Generate images for each page
+      // Extract entities for tracking
+      const entities = generatedStory.entities || [];
+      const entityGenerationIds: Record<string, string> = {};
+      
+      // Generate images for each page with entity consistency
       const pages: StoryPage[] = await Promise.all(
         generatedStory.pages.map(async (page, index) => {
-          const imageUrl = await generateImage(page.imagePrompt);
+          // Get entities that appear on this page
+          const pageEntities = page.entities || [];
+          
+          // Create a map of entity reference IDs for this page
+          const pageEntityRefs: Record<string, string> = {};
+          pageEntities.forEach(entityId => {
+            if (entityGenerationIds[entityId]) {
+              pageEntityRefs[entityId] = entityGenerationIds[entityId];
+            }
+          });
+          
+          // Generate image with entity consistency
+          const imageResult = await generateImage({
+            prompt: page.imagePrompt,
+            entityReferenceIds: pageEntityRefs,
+            artStyle
+          });
+          
+          let imageUrl: string;
+          
+          // Handle different return types from generateImage
+          if (typeof imageResult === 'string') {
+            imageUrl = imageResult;
+          } else {
+            imageUrl = imageResult.url;
+            
+            // Store any new generation IDs for future pages
+            if (imageResult.generatedIds) {
+              Object.entries(imageResult.generatedIds).forEach(([entityId, genId]) => {
+                entityGenerationIds[entityId] = genId;
+              });
+            }
+          }
+          
           return {
             pageNumber: index + 1,
             text: page.text,
-            imageUrl
+            imageUrl,
+            imagePrompt: page.imagePrompt,
+            entities: pageEntities
           };
         })
       );
 
+      // Prepare entities for storage by removing appearance info
+      const storyEntities: StoryEntity[] = entities.map(entity => ({
+        id: entity.id,
+        name: entity.name,
+        type: entity.type,
+        description: entity.description,
+        generationId: entityGenerationIds[entity.id] // Store the generation ID if we have it
+      }));
+      
       // Save story to storage
       const newStory = await storage.createStory({
         title,
@@ -76,7 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ageRange,
         artStyle,
         layoutType,
-        pages
+        pages,
+        entities: storyEntities
       });
 
       res.status(201).json(newStory);
@@ -107,23 +156,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple endpoint to generate a preview
+  // Generate a preview story with entities
   app.post("/api/preview", async (req: Request, res: Response) => {
     try {
       const schema = z.object({
-        prompt: z.string().min(1)
+        title: z.string().min(1),
+        description: z.string().min(1),
+        storyType: z.string().min(1),
+        ageRange: z.string().min(1),
+        numberOfPages: z.number().min(1).optional(),
+        artStyle: z.string().optional()
       });
       
       const parsedBody = schema.safeParse(req.body);
       if (!parsedBody.success) {
-        return res.status(400).json({ message: "Invalid prompt" });
+        return res.status(400).json({ 
+          message: "Invalid story data",
+          errors: parsedBody.error.errors
+        });
       }
 
-      const imageUrl = await generateImage(parsedBody.data.prompt);
-      res.json({ imageUrl });
+      const { title, description, storyType, ageRange, numberOfPages } = parsedBody.data;
+
+      const storyData = await generateStory({
+        title,
+        description,
+        storyType,
+        ageRange,
+        numberOfPages: numberOfPages || 5
+      });
+
+      return res.json(storyData);
     } catch (error) {
-      res.status(500).json({ 
+      console.error("Error generating preview:", error);
+      return res.status(500).json({ 
         message: "Failed to generate preview", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Generate an image for a story page with consistency
+  app.post("/api/generate-image", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        prompt: z.string().min(1),
+        entityReferenceIds: z.record(z.string()).optional(),
+        artStyle: z.string().optional()
+      });
+      
+      const parsedBody = schema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ 
+          message: "Invalid image prompt data",
+          errors: parsedBody.error.errors
+        });
+      }
+      
+      const { prompt, entityReferenceIds, artStyle } = parsedBody.data;
+      
+      // If entity reference IDs are provided, use them for character consistency
+      let imageResult;
+      if (entityReferenceIds || artStyle) {
+        imageResult = await generateImage({
+          prompt,
+          entityReferenceIds,
+          artStyle
+        });
+      } else {
+        // Simple prompt without entity references
+        imageResult = await generateImage(prompt);
+      }
+      
+      return res.json(imageResult);
+    } catch (error) {
+      console.error("Error generating image:", error);
+      return res.status(500).json({ 
+        message: "Failed to generate image", 
         error: error instanceof Error ? error.message : String(error)
       });
     }
