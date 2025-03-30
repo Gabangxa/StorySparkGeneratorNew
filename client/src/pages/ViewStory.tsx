@@ -1,15 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { Story } from "@shared/schema";
+import { Story, StoryEntityWithAppearances } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, Download, AlertCircle, Book, ArrowLeft } from "lucide-react";
+import { 
+  ChevronLeft, Download, AlertCircle, Book, ArrowLeft,
+  Users, MapPin, Package2, Info, Eye
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
 import StoryBook from "@/components/pdf/StoryBook";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ViewStory() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +31,34 @@ export default function ViewStory() {
   // Format story type for display
   const formatStoryType = (type: string) => {
     return type.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+  
+  // Helper function to get the appropriate icon for entity type
+  const getEntityIcon = (type: string) => {
+    switch (type) {
+      case 'character':
+        return <Users className="h-4 w-4" />;
+      case 'location':
+        return <MapPin className="h-4 w-4" />;
+      case 'object':
+        return <Package2 className="h-4 w-4" />;
+      default:
+        return <Info className="h-4 w-4" />;
+    }
+  };
+  
+  // Helper function to get the appropriate background color for entity type
+  const getEntityBadgeColor = (type: string) => {
+    switch (type) {
+      case 'character':
+        return 'bg-[#FF6B6B]';
+      case 'location':
+        return 'bg-[#4ECDC4]';
+      case 'object':
+        return 'bg-[#FFE66D] text-gray-800';
+      default:
+        return 'bg-gray-500';
+    }
   };
 
   // Render loading skeletons
@@ -169,6 +202,172 @@ export default function ViewStory() {
             
             <Separator className="my-6" />
             
+            {story.entities && story.entities.length > 0 && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold mb-4 flex items-center">
+                    <Eye className="mr-2 h-5 w-5 text-[#4ECDC4]" />
+                    Story Elements
+                  </h2>
+                  
+                  <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
+                    <Tabs defaultValue="characters" className="mb-4">
+                      <TabsList className="grid grid-cols-3 mb-4">
+                        <TabsTrigger value="characters" className="flex items-center">
+                          <Users className="mr-2 h-4 w-4" /> Characters
+                        </TabsTrigger>
+                        <TabsTrigger value="locations" className="flex items-center">
+                          <MapPin className="mr-2 h-4 w-4" /> Locations
+                        </TabsTrigger>
+                        <TabsTrigger value="objects" className="flex items-center">
+                          <Package2 className="mr-2 h-4 w-4" /> Objects
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="characters" className="space-y-4">
+                        {story.entities
+                          .filter(entity => entity.type === 'character')
+                          .map(entity => {
+                            // Calculate page appearances
+                            const appearsInPages = story.pages
+                              .filter(page => page.entities?.includes(entity.id))
+                              .map(page => page.pageNumber);
+                              
+                            return (
+                              <div key={entity.id} className="bg-[#F9F9F9] rounded-lg p-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h5 className="font-bold text-lg">{entity.name}</h5>
+                                    <p className="text-gray-600 text-sm">{entity.description}</p>
+                                  </div>
+                                  <Badge className="bg-[#FF6B6B]">
+                                    Appears in {appearsInPages.length} {appearsInPages.length === 1 ? 'page' : 'pages'}
+                                  </Badge>
+                                </div>
+                                
+                                {appearsInPages.length > 0 && (
+                                  <div className="mt-2">
+                                    <p className="text-sm text-gray-600 mb-1">Appears on pages:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {appearsInPages.map(pageNum => (
+                                        <span key={`${entity.id}-p${pageNum}`} className="bg-[#4ECDC4]/20 text-[#4ECDC4] text-xs font-medium px-2 py-1 rounded-full">
+                                          Page {pageNum}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        
+                        {story.entities.filter(entity => entity.type === 'character').length === 0 && (
+                          <p className="text-center py-8 text-gray-500">No characters in this story.</p>
+                        )}
+                      </TabsContent>
+                      
+                      <TabsContent value="locations" className="space-y-4">
+                        {story.entities
+                          .filter(entity => entity.type === 'location')
+                          .map(entity => {
+                            // Calculate page appearances
+                            const appearsInPages = story.pages
+                              .filter(page => page.entities?.includes(entity.id))
+                              .map(page => page.pageNumber);
+                              
+                            return (
+                              <div key={entity.id} className="bg-[#F9F9F9] rounded-lg p-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h5 className="font-bold text-lg">{entity.name}</h5>
+                                    <p className="text-gray-600 text-sm">{entity.description}</p>
+                                  </div>
+                                  <Badge className="bg-[#4ECDC4]">
+                                    Appears in {appearsInPages.length} {appearsInPages.length === 1 ? 'page' : 'pages'}
+                                  </Badge>
+                                </div>
+                                
+                                {appearsInPages.length > 0 && (
+                                  <div className="mt-2">
+                                    <p className="text-sm text-gray-600 mb-1">Appears on pages:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {appearsInPages.map(pageNum => (
+                                        <span key={`${entity.id}-p${pageNum}`} className="bg-[#4ECDC4]/20 text-[#4ECDC4] text-xs font-medium px-2 py-1 rounded-full">
+                                          Page {pageNum}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        
+                        {story.entities.filter(entity => entity.type === 'location').length === 0 && (
+                          <p className="text-center py-8 text-gray-500">No locations in this story.</p>
+                        )}
+                      </TabsContent>
+                      
+                      <TabsContent value="objects" className="space-y-4">
+                        {story.entities
+                          .filter(entity => entity.type === 'object')
+                          .map(entity => {
+                            // Calculate page appearances
+                            const appearsInPages = story.pages
+                              .filter(page => page.entities?.includes(entity.id))
+                              .map(page => page.pageNumber);
+                              
+                            return (
+                              <div key={entity.id} className="bg-[#F9F9F9] rounded-lg p-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h5 className="font-bold text-lg">{entity.name}</h5>
+                                    <p className="text-gray-600 text-sm">{entity.description}</p>
+                                  </div>
+                                  <Badge className="bg-[#FFE66D] text-gray-800">
+                                    Appears in {appearsInPages.length} {appearsInPages.length === 1 ? 'page' : 'pages'}
+                                  </Badge>
+                                </div>
+                                
+                                {appearsInPages.length > 0 && (
+                                  <div className="mt-2">
+                                    <p className="text-sm text-gray-600 mb-1">Appears on pages:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {appearsInPages.map(pageNum => (
+                                        <span key={`${entity.id}-p${pageNum}`} className="bg-[#4ECDC4]/20 text-[#4ECDC4] text-xs font-medium px-2 py-1 rounded-full">
+                                          Page {pageNum}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        
+                        {story.entities.filter(entity => entity.type === 'object').length === 0 && (
+                          <p className="text-center py-8 text-gray-500">No objects in this story.</p>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                    
+                    <div className="bg-[#F9F9F9]/50 p-4 rounded-lg border border-dashed border-gray-300 mt-4">
+                      <div className="flex items-center mb-2">
+                        <Book className="mr-2 h-5 w-5 text-[#4ECDC4]" />
+                        <h5 className="font-bold">Visual Consistency Feature</h5>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        This story maintains visual consistency for all characters, locations, and objects across every
+                        illustration, ensuring a cohesive and professional storybook experience.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <Separator className="my-6" />
+              </>
+            )}
+            
             <h2 className="text-xl font-bold mb-4">Story Pages</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {story.pages.map((page) => (
@@ -182,6 +381,28 @@ export default function ViewStory() {
                     <div className="absolute top-2 right-2 bg-white/80 rounded-full w-8 h-8 flex items-center justify-center text-gray-800 font-bold">
                       {page.pageNumber}
                     </div>
+                    
+                    {/* Show entity badges if they exist */}
+                    {page.entities && page.entities.length > 0 && story.entities && (
+                      <div className="absolute bottom-2 left-2 flex flex-wrap gap-1 max-w-[70%]">
+                        {page.entities.slice(0, 3).map(entityId => {
+                          const entity = story.entities!.find(e => e.id === entityId);
+                          if (!entity) return null;
+                          
+                          return (
+                            <span key={entityId} className={`${getEntityBadgeColor(entity.type)} text-xs text-white font-medium px-2 py-1 rounded-full flex items-center`}>
+                              {getEntityIcon(entity.type)}
+                              <span className="ml-1 truncate max-w-[100px]">{entity.name}</span>
+                            </span>
+                          );
+                        })}
+                        {page.entities.length > 3 && (
+                          <span className="bg-gray-800/80 text-white text-xs font-medium px-2 py-1 rounded-full">
+                            +{page.entities.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <CardContent className="p-4">
                     <p className="text-sm">{page.text}</p>

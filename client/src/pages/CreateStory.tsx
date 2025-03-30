@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { AGE_RANGES, AgeRange, ART_STYLES, ArtStyle, LAYOUT_TYPES, LayoutType, STORY_TYPES, StoryType, storyFormSchema, StoryFormData } from "@shared/schema";
+import { 
+  AGE_RANGES, AgeRange, ART_STYLES, ArtStyle, LAYOUT_TYPES, LayoutType, 
+  STORY_TYPES, StoryType, storyFormSchema, StoryFormData, StoryEntityWithAppearances 
+} from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,16 +19,25 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, ArrowRight, Loader2, WandSparkles } from "lucide-react";
+import { 
+  ArrowLeft, ArrowRight, Loader2, WandSparkles, 
+  Users, MapPin, Package2, Eye, BookOpen 
+} from "lucide-react";
 import StoryTypeCard from "@/components/StoryTypeCard";
 import ArtStyleCard from "@/components/ArtStyleCard";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Step = 1 | 2 | 3;
 
 export default function CreateStory() {
   const [step, setStep] = useState<Step>(1);
+  const [previewData, setPreviewData] = useState<{
+    pages: Array<{ text: string; imagePrompt: string; entities: string[] }>;
+    entities: StoryEntityWithAppearances[];
+  } | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -67,6 +79,23 @@ export default function CreateStory() {
     createStory(form.getValues());
   };
 
+  const { mutate: previewStory, isPending: isPreviewLoading } = useMutation({
+    mutationFn: async (data: StoryFormData) => {
+      const response = await apiRequest("POST", "/api/preview", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setPreviewData(data);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to preview story",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  });
+
   const nextStep = () => {
     if (step === 1) {
       const { title, description, storyType, ageRange } = form.getValues();
@@ -86,6 +115,8 @@ export default function CreateStory() {
       }
       
       setStep(3);
+      // Generate a preview when moving to step 3
+      previewStory(form.getValues());
     }
   };
 
@@ -336,6 +367,171 @@ export default function CreateStory() {
     </div>
   );
 
+  // Helper function to get icon for entity type
+  const getEntityIcon = (type: string) => {
+    switch (type) {
+      case 'character':
+        return <Users className="h-4 w-4" />;
+      case 'location':
+        return <MapPin className="h-4 w-4" />;
+      case 'object':
+        return <Package2 className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const renderPreviewSection = () => {
+    if (isPreviewLoading) {
+      return (
+        <div className="bg-white rounded-xl border-2 border-gray-200 p-6 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#4ECDC4]" />
+          <p className="text-lg">Analyzing your story and identifying key elements...</p>
+        </div>
+      );
+    }
+
+    if (!previewData) {
+      return null;
+    }
+
+    return (
+      <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-8">
+        <h4 className="text-xl font-bold mb-4 flex items-center">
+          <Eye className="mr-2 h-5 w-5 text-[#4ECDC4]" />
+          Story Elements Preview
+        </h4>
+        
+        <Tabs defaultValue="characters" className="mb-4">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="characters" className="flex items-center">
+              <Users className="mr-2 h-4 w-4" /> Characters
+            </TabsTrigger>
+            <TabsTrigger value="locations" className="flex items-center">
+              <MapPin className="mr-2 h-4 w-4" /> Locations
+            </TabsTrigger>
+            <TabsTrigger value="objects" className="flex items-center">
+              <Package2 className="mr-2 h-4 w-4" /> Objects
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="characters" className="space-y-4">
+            {previewData.entities
+              .filter(entity => entity.type === 'character')
+              .map(entity => (
+                <div key={entity.id} className="bg-[#F9F9F9] rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h5 className="font-bold text-lg">{entity.name}</h5>
+                      <p className="text-gray-600 text-sm">{entity.description}</p>
+                    </div>
+                    <Badge className="bg-[#FF6B6B]">
+                      Appears in {entity.appearsInPages.length} {entity.appearsInPages.length === 1 ? 'page' : 'pages'}
+                    </Badge>
+                  </div>
+                  
+                  {entity.appearsInPages.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600 mb-1">Appears on pages:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {entity.appearsInPages.map(pageNum => (
+                          <span key={`${entity.id}-p${pageNum}`} className="bg-[#4ECDC4]/20 text-[#4ECDC4] text-xs font-medium px-2 py-1 rounded-full">
+                            Page {pageNum}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            {previewData.entities.filter(entity => entity.type === 'character').length === 0 && (
+              <p className="text-center py-8 text-gray-500">No characters identified in your story.</p>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="locations" className="space-y-4">
+            {previewData.entities
+              .filter(entity => entity.type === 'location')
+              .map(entity => (
+                <div key={entity.id} className="bg-[#F9F9F9] rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h5 className="font-bold text-lg">{entity.name}</h5>
+                      <p className="text-gray-600 text-sm">{entity.description}</p>
+                    </div>
+                    <Badge className="bg-[#4ECDC4]">
+                      Appears in {entity.appearsInPages.length} {entity.appearsInPages.length === 1 ? 'page' : 'pages'}
+                    </Badge>
+                  </div>
+                  
+                  {entity.appearsInPages.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600 mb-1">Appears on pages:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {entity.appearsInPages.map(pageNum => (
+                          <span key={`${entity.id}-p${pageNum}`} className="bg-[#4ECDC4]/20 text-[#4ECDC4] text-xs font-medium px-2 py-1 rounded-full">
+                            Page {pageNum}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            {previewData.entities.filter(entity => entity.type === 'location').length === 0 && (
+              <p className="text-center py-8 text-gray-500">No locations identified in your story.</p>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="objects" className="space-y-4">
+            {previewData.entities
+              .filter(entity => entity.type === 'object')
+              .map(entity => (
+                <div key={entity.id} className="bg-[#F9F9F9] rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h5 className="font-bold text-lg">{entity.name}</h5>
+                      <p className="text-gray-600 text-sm">{entity.description}</p>
+                    </div>
+                    <Badge className="bg-[#FFE66D] text-gray-800">
+                      Appears in {entity.appearsInPages.length} {entity.appearsInPages.length === 1 ? 'page' : 'pages'}
+                    </Badge>
+                  </div>
+                  
+                  {entity.appearsInPages.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600 mb-1">Appears on pages:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {entity.appearsInPages.map(pageNum => (
+                          <span key={`${entity.id}-p${pageNum}`} className="bg-[#4ECDC4]/20 text-[#4ECDC4] text-xs font-medium px-2 py-1 rounded-full">
+                            Page {pageNum}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            {previewData.entities.filter(entity => entity.type === 'object').length === 0 && (
+              <p className="text-center py-8 text-gray-500">No objects identified in your story.</p>
+            )}
+          </TabsContent>
+        </Tabs>
+        
+        <div className="bg-[#F9F9F9]/50 p-4 rounded-lg border border-dashed border-gray-300">
+          <div className="flex items-center mb-2">
+            <BookOpen className="mr-2 h-5 w-5 text-[#4ECDC4]" />
+            <h5 className="font-bold">Visual Consistency Feature</h5>
+          </div>
+          <p className="text-sm text-gray-600">
+            Your story will maintain visual consistency for all characters, locations, and objects
+            across every illustration, ensuring a cohesive and professional storybook experience.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const renderStep3 = () => (
     <div className="mb-10">
       <h3 className="text-2xl font-bold mb-6">Generate Your Story</h3>
@@ -370,6 +566,8 @@ export default function CreateStory() {
           </div>
         </div>
       </div>
+
+      {renderPreviewSection()}
       
       <div className="text-center p-6 bg-white rounded-xl border-2 border-[#FFE66D]/50 mb-8">
         <p className="mb-4 text-lg">

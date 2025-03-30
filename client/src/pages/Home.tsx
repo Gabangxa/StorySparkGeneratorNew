@@ -1,6 +1,9 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { BookOpen, WandSparkles, Edit, Palette, Download, ArrowRight } from "lucide-react";
+import { 
+  BookOpen, WandSparkles, Edit, Palette, Users, 
+  ShieldCheck, Sparkles, ImageIcon, Fingerprint 
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
@@ -92,6 +95,109 @@ export default function Home() {
                 <p>Our AI generates your unique storybook. Preview, make any adjustments, and download as a ready-to-print PDF.</p>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+      
+      {/* Features Section */}
+      <section className="py-12 md:py-16 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Powerful Features</h2>
+            <p className="text-lg max-w-2xl mx-auto">
+              StoryWonder incorporates advanced AI technology to create visually consistent and engaging storybooks.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-gradient-to-br from-[#FF6B6B]/5 to-[#4ECDC4]/5 p-6 rounded-xl border border-gray-100">
+              <div className="flex items-start mb-4">
+                <div className="mr-4 p-3 rounded-full bg-[#FF6B6B]/10">
+                  <Fingerprint className="h-6 w-6 text-[#FF6B6B]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Character & Object Consistency</h3>
+                  <p className="text-gray-700">
+                    Our advanced entity tracking system maintains visual consistency of all characters, locations, and objects 
+                    across every page of your story, ensuring a professional-quality storybook.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="ml-16 bg-white p-4 rounded-lg border border-dashed border-gray-300">
+                <p className="text-sm text-gray-600">
+                  <span className="font-bold">How it works:</span> The system identifies and tracks all story elements, 
+                  ensuring that characters like "Luna the cat" or objects like "the magical wand" maintain the same appearance 
+                  throughout your storybook.
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-[#4ECDC4]/5 to-[#FFE66D]/5 p-6 rounded-xl border border-gray-100">
+              <div className="flex items-start mb-4">
+                <div className="mr-4 p-3 rounded-full bg-[#4ECDC4]/10">
+                  <ImageIcon className="h-6 w-6 text-[#4ECDC4]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Multiple Art Styles</h3>
+                  <p className="text-gray-700">
+                    Choose from a variety of beautiful illustration styles, from anime and watercolor to 3D cartoon and pixel art,
+                    allowing you to perfectly match the visuals to your story's theme.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="ml-16 bg-white p-4 rounded-lg border border-dashed border-gray-300">
+                <p className="text-sm text-gray-600">
+                  <span className="font-bold">How it works:</span> Each art style is optimized for children's storybooks, 
+                  with visual consistency maintained across all illustrations regardless of the style you choose.
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-[#FFE66D]/5 to-[#FF6B6B]/5 p-6 rounded-xl border border-gray-100">
+              <div className="flex items-start mb-4">
+                <div className="mr-4 p-3 rounded-full bg-[#FFE66D]/20">
+                  <Users className="h-6 w-6 text-[#FFE66D]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Age-Appropriate Content</h3>
+                  <p className="text-gray-700">
+                    Select your target age range (3-5, 6-8, or 9-12 years) and our AI adapts the vocabulary, themes, 
+                    and visual complexity to be perfectly suitable for your child's development level.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="ml-16 bg-white p-4 rounded-lg border border-dashed border-gray-300">
+                <p className="text-sm text-gray-600">
+                  <span className="font-bold">How it works:</span> The system tailors the language complexity, 
+                  sentence length, themes, and visual elements based on child development research for each age group.
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-[#FF6B6B]/5 to-[#FFE66D]/5 p-6 rounded-xl border border-gray-100">
+              <div className="flex items-start mb-4">
+                <div className="mr-4 p-3 rounded-full bg-[#FF6B6B]/10">
+                  <Sparkles className="h-6 w-6 text-[#FF6B6B]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">High-Quality PDF Export</h3>
+                  <p className="text-gray-700">
+                    Generate professional-quality, ready-to-print PDFs with your choice of layout formats, 
+                    perfect for printing at home, sharing digitally, or creating a special gift.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="ml-16 bg-white p-4 rounded-lg border border-dashed border-gray-300">
+                <p className="text-sm text-gray-600">
+                  <span className="font-bold">How it works:</span> Choose between side-by-side or picture-top layouts, 
+                  with perfectly formatted text and high-resolution images in a standard book format ready for printing.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
