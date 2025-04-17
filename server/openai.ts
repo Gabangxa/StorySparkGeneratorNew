@@ -272,33 +272,49 @@ export async function generateImage(
       
       let enhancedPrompt = finalPrompt;
       
-      // Add character details to the prompt with much more detailed descriptions
+      const MAX_DESCRIPTION_LENGTH = 200; // Limit individual descriptions to avoid token issues
+      
+      // Add character details to the prompt with more concise descriptions
       if (characters.length > 0) {
-        enhancedPrompt += "\n\n## CHARACTERS (Maintain exact visual consistency throughout story)";
+        enhancedPrompt += "\n\nCHARACTERS:";
         characters.forEach(char => {
-          // Add more structured character details to help DALL-E maintain consistency
-          enhancedPrompt += `\n- ${char.name}: ${char.description}`;
-          // Extract potential visual attributes from the description if possible
-          const attributes = extractVisualAttributes(char.description);
+          // Trim description to prevent exceeding token limits
+          const trimmedDescription = char.description.length > MAX_DESCRIPTION_LENGTH
+            ? char.description.substring(0, MAX_DESCRIPTION_LENGTH) + "..."
+            : char.description;
+            
+          // Add character details in a concise format
+          enhancedPrompt += `\n- ${char.name}: ${trimmedDescription}`;
+          
+          // Extract only the most important visual attributes (limited to 3)
+          const attributes = extractVisualAttributes(char.description).slice(0, 3);
           if (attributes.length > 0) {
-            enhancedPrompt += `\n  Visual attributes: ${attributes.join(", ")}`;
+            enhancedPrompt += `\n  Key features: ${attributes.join("; ")}`;
           }
         });
       }
       
-      // Add location details to the prompt
-      if (locations.length > 0) {
-        enhancedPrompt += "\n\n## SETTINGS (Maintain consistent appearance)";
+      // Add location details to the prompt (simplified)
+      if (locations.length > 0 && locations.length <= 2) { // Limit to 2 locations max
+        enhancedPrompt += "\n\nSETTINGS:";
         locations.forEach(loc => {
-          enhancedPrompt += `\n- ${loc.name}: ${loc.description}`;
+          const trimmedDescription = loc.description.length > MAX_DESCRIPTION_LENGTH
+            ? loc.description.substring(0, MAX_DESCRIPTION_LENGTH) + "..."
+            : loc.description;
+            
+          enhancedPrompt += `\n- ${loc.name}: ${trimmedDescription}`;
         });
       }
       
-      // Add object details to the prompt
-      if (objects.length > 0) {
-        enhancedPrompt += "\n\n## OBJECTS (Maintain consistent appearance)";
+      // Add object details only if they're few and important
+      if (objects.length > 0 && objects.length <= 2) { // Limit to 2 objects max
+        enhancedPrompt += "\n\nOBJECTS:";
         objects.forEach(obj => {
-          enhancedPrompt += `\n- ${obj.name}: ${obj.description}`;
+          const trimmedDescription = obj.description.length > MAX_DESCRIPTION_LENGTH
+            ? obj.description.substring(0, MAX_DESCRIPTION_LENGTH) + "..."
+            : obj.description;
+            
+          enhancedPrompt += `\n- ${obj.name}: ${trimmedDescription}`;
         });
       }
       
@@ -306,45 +322,56 @@ export async function generateImage(
       finalPrompt = enhancedPrompt;
     }
     
-    // Create a comprehensive prompt with formatting and style instructions
-    // This wrapping helps DALL-E understand the context and requirements
-    const wrappedPrompt = `
-# CHILDREN'S BOOK ILLUSTRATION DIRECTIVE
-Create a high-quality children's book illustration in ${formattedArtStyle} style with a landscape format.
+    // Create a more concise prompt with only essential formatting
+    // This helps avoid hitting DALL-E token limits
+    let wrappedPrompt = '';
+    
+    // Limit the scene description to ensure we don't exceed token limits
+    // Calculate approximately how much space we have for finalPrompt
+    const MAX_PROMPT_LENGTH = 4000; // DALL-E 3 has a max token limit
+    const WRAPPER_LENGTH = 400; // Approximate length of our wrappers
+    
+    const availableLength = MAX_PROMPT_LENGTH - WRAPPER_LENGTH;
+    const trimmedFinalPrompt = finalPrompt.length > availableLength 
+      ? finalPrompt.substring(0, availableLength - 3) + "..." 
+      : finalPrompt;
+    
+    // Create a simpler prompt structure that's still effective
+    wrappedPrompt = `
+Create a children's book illustration in ${formattedArtStyle} style.
 
-## CONSISTENCY REQUIREMENTS
-This is part of a storybook series - maintain ABSOLUTE visual consistency with previous illustrations:
-- Characters must maintain identical appearance, clothing, colors, and proportions between images
-- Maintain consistent art style, color palette, and level of detail throughout the story
-- Maintain consistent perspective, scale, and positioning of recurring elements
+CONSISTENCY: Characters must maintain identical appearance, clothing, colors between all images.
 
-## SCENE DESCRIPTION
-${finalPrompt}
+SCENE:
+${trimmedFinalPrompt}
 
-## STYLISTIC GUIDELINES
-- Bright, engaging colors appropriate for children's books
-- Clear, detailed illustrations with simplified backgrounds
-- Expressive character faces showing clear emotions
-- No text in the image
-- Maintain the same artistic style throughout the entire storybook
+STYLE: Bright colors, clear details, expressive faces, child-friendly.
 `;
 
     // Log the prompt for debugging purposes
     console.log("Generating image with prompt:", wrappedPrompt);
     
-    // Call the OpenAI API to generate the image
-    const response = await openai.images.generate({
+    // Prepare request parameters with only the required fields
+    // This helps avoid invalid parameter errors
+    const requestParams: any = {
       model: "dall-e-3",         // Use DALL-E 3 for highest quality illustrations
       prompt: wrappedPrompt,     // The enhanced prompt
       n: 1,                      // Generate one image
-      size: "1024x1792",         // Landscape format optimal for storybooks
-      quality: "hd",             // High-definition quality
+      size: "1024x1024",         // Square format (DALL-E 3 only supports 1024x1024, 1792x1024, or 1024x1792)
+      quality: "standard",       // Standard quality for reliability
       style: "vivid",            // Vivid style for children's illustrations
-      // Include reference IDs if provided to maintain character consistency
-      ...(Object.keys(entityReferenceIds).length > 0 && {
-        reference_image_ids: Object.values(entityReferenceIds)
-      })
-    });
+    };
+    
+    // Only add reference_image_ids if actually needed and valid
+    // OpenAI doesn't like empty arrays or invalid reference IDs
+    if (Object.keys(entityReferenceIds).length > 0) {
+      // For now, we'll disable this feature since it might be causing issues
+      // We'll use prompt engineering for consistency instead
+      // requestParams.reference_image_ids = Object.values(entityReferenceIds);
+    }
+    
+    // Call the OpenAI API to generate the image
+    const response = await openai.images.generate(requestParams);
 
     // Validate the response
     if (!response.data[0].url) {
