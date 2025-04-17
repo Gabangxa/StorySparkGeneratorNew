@@ -65,70 +65,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
        * This is a critical section that ensures visual continuity across all story pages
        * by tracking entity appearances and passing their descriptions to the image generator
        */
-      const pages: StoryPage[] = await Promise.all(
-        generatedStory.pages.map(async (page, index) => {
-          // Extract the entities that appear on this specific page
-          const pageEntities = page.entities || [];
-          
-          // Create a mapping of entity IDs to their DALL-E generation IDs for visual consistency
-          // This helps DALL-E maintain the same visual appearance for recurring characters/objects
-          const pageEntityRefs: Record<string, string> = {};
-          pageEntities.forEach(entityId => {
-            if (entityGenerationIds[entityId]) {
-              pageEntityRefs[entityId] = entityGenerationIds[entityId];
-            }
-          });
-          
-          // Get the complete entity objects (with descriptions) for this page
-          // This enhances the prompt with detailed descriptions of each entity
-          const relevantEntities = entities
-            .filter(entity => pageEntities.includes(entity.id));
-            
-          // Log page entity information for debugging and monitoring
-          console.log(`Page ${index + 1} has ${relevantEntities.length} entities: ` + 
-            relevantEntities.map(e => e.name).join(", "));
-          
-          // Generate an illustration with our enhanced entity consistency approach
-          // We pass full entity objects to include their descriptions in the prompt
-          const imageResult = await generateImage({
-            prompt: page.imagePrompt,               // Base image description
-            entityReferenceIds: pageEntityRefs,     // References to maintain visual consistency
-            artStyle,                               // User-selected art style
-            entities: relevantEntities              // Complete entity objects with descriptions
-          });
-          
-          // Variables to store the generation results
-          let imageUrl: string;
-          let revisedPrompt: string | undefined;
-          
-          // Handle different return types from the generateImage function
-          if (typeof imageResult === 'string') {
-            // Simple string result (just the URL)
-            imageUrl = imageResult;
-          } else {
-            // Complex result object with metadata
-            imageUrl = imageResult.url;
-            revisedPrompt = imageResult.revised_prompt;
-            
-            // Store any new generation IDs for future page references
-            // This is how we maintain visual consistency across the storybook
-            if (imageResult.generatedIds) {
-              Object.entries(imageResult.generatedIds).forEach(([entityId, genId]) => {
-                entityGenerationIds[entityId] = genId;
-              });
-            }
+      
+      // First, identify all unique entities across the entire story
+      // This helps us maintain consistent appearances throughout all pages
+      const allUniqueEntities = Array.from(new Set(
+        generatedStory.pages.flatMap(page => page.entities || [])
+      ));
+      
+      console.log(`Story has ${allUniqueEntities.length} unique entities across all pages`);
+      
+      // Track entities that appear in multiple pages for special consistency enforcement
+      const entityFrequency: Record<string, number> = {};
+      generatedStory.pages.forEach(page => {
+        const pageEntities = page.entities || [];
+        pageEntities.forEach(entityId => {
+          entityFrequency[entityId] = (entityFrequency[entityId] || 0) + 1;
+        });
+      });
+      
+      // Identify recurring entities (appear in more than one page)
+      const recurringEntities = Object.entries(entityFrequency)
+        .filter(([_, count]) => count > 1)
+        .map(([id]) => id);
+      
+      console.log(`Found ${recurringEntities.length} recurring entities that need special consistency`);
+      
+      // Pre-load full entity details
+      const entityDetailsMap = entities.reduce((map, entity) => {
+        map[entity.id] = entity;
+        return map;
+      }, {} as Record<string, StoryEntityWithAppearances>);
+      
+      // Generate illustrations for each page, processing sequentially to maintain consistency
+      // This ensures that character appearances from early pages inform later ones
+      const pages: StoryPage[] = [];
+      
+      for (let index = 0; index < generatedStory.pages.length; index++) {
+        const page = generatedStory.pages[index];
+        const pageEntities = page.entities || [];
+        
+        // Create a mapping of entity IDs to their DALL-E generation IDs for visual consistency
+        const pageEntityRefs: Record<string, string> = {};
+        pageEntities.forEach(entityId => {
+          if (entityGenerationIds[entityId]) {
+            pageEntityRefs[entityId] = entityGenerationIds[entityId];
           }
+        });
+        
+        // Add ALL entity descriptions to recurring characters to maintain stronger consistency
+        // This ensures that even if a character doesn't appear on the current page,
+        // their description is still included if they appear elsewhere in the story
+        const pagePrimaryEntities = entities.filter(entity => pageEntities.includes(entity.id));
+        
+        // For maximum consistency, always include all recurring characters in every prompt
+        // even if they don't appear on this specific page
+        const recurringEntityObjects = recurringEntities
+          .filter(id => !pageEntities.includes(id)) // Only include recurring entities not already on this page
+          .map(id => entityDetailsMap[id])
+          .filter(Boolean);
+        
+        // Combine all entities needed for this page
+        const allRelevantEntities = [...pagePrimaryEntities, ...recurringEntityObjects];
+        
+        // Log page entity information for debugging and monitoring
+        console.log(`Page ${index + 1}: ` + 
+          `${pagePrimaryEntities.length} visible entities, ` +
+          `${recurringEntityObjects.length} recurring entities for consistency, ` + 
+          `${allRelevantEntities.map(e => e.name).join(", ")}`);
+        
+        // Generate an illustration with our enhanced entity consistency approach
+        const imageResult = await generateImage({
+          prompt: page.imagePrompt,                 // Base image description
+          entityReferenceIds: pageEntityRefs,       // References to maintain visual consistency
+          artStyle,                                 // User-selected art style
+          entities: allRelevantEntities             // ALL relevant entities including those from other pages
+        });
+        
+        // Process the result
+        let imageUrl: string;
+        let revisedPrompt: string | undefined;
+        
+        if (typeof imageResult === 'string') {
+          imageUrl = imageResult;
+        } else {
+          imageUrl = imageResult.url;
+          revisedPrompt = imageResult.revised_prompt;
           
-          // Return the complete page object with generated image
-          return {
-            pageNumber: index + 1,                           // Sequential page number
-            text: page.text,                                 // Story text for this page
-            imageUrl,                                        // URL of the generated illustration
-            imagePrompt: revisedPrompt || page.imagePrompt, // Store the revised prompt if available
-            entities: pageEntities                          // IDs of entities appearing on this page
-          };
-        })
-      );
+          // Store any new generation IDs for future page references
+          if (imageResult.generatedIds) {
+            Object.entries(imageResult.generatedIds).forEach(([entityId, genId]) => {
+              entityGenerationIds[entityId] = genId;
+            });
+          }
+        }
+        
+        // Add the completed page to our results
+        pages.push({
+          pageNumber: index + 1,
+          text: page.text,
+          imageUrl,
+          imagePrompt: revisedPrompt || page.imagePrompt,
+          entities: pageEntities
+        });
+      }
 
       // Prepare entities for storage by removing appearance info
       const storyEntities: StoryEntity[] = entities.map(entity => ({

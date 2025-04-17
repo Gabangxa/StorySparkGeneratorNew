@@ -51,7 +51,7 @@ export async function generateStory({
           "id": "unique_id_string",
           "name": "Name of character/location/object",
           "type": "character" or "location" or "object",
-          "description": "Detailed visual description including appearance, colors, distinctive features, etc."
+          "description": "EXTREMELY detailed visual description for illustration purposes. Include specific details about appearance, clothing colors, sizes, distinctive features, facial expressions, body proportions, etc."
         },
         ...
       ],
@@ -64,11 +64,30 @@ export async function generateStory({
       ]
     }
     
-    For characters, provide rich visual descriptions that will help maintain consistency across images.
-    For locations, describe the setting in detail.
-    For important objects, describe their appearance clearly.
+    Characters MUST have visual consistency throughout the book. For characters, always include:
+    - Exact hair color, style, and length
+    - Specific eye color and shape
+    - Skin tone description
+    - Detailed clothing description with colors
+    - Age, height, and body type
+    - Any distinctive features (glasses, hats, accessories, etc.)
+    - Facial features (round face, pointed chin, freckles, etc.)
+    
+    For locations, provide highly detailed descriptions including:
+    - Architectural style
+    - Color schemes and materials
+    - Size and scale
+    - Distinctive features
+    - Lighting and atmosphere
+    
+    For important objects, describe in detail:
+    - Exact colors and materials
+    - Size and proportions
+    - Unique features or embellishments
+    - How they are positioned or used
     
     The story should be engaging, appropriate for the age range, and have a clear narrative arc.
+    Maximum 3 main characters for better visual consistency.
   `;
 
   try {
@@ -119,7 +138,7 @@ export async function generateStory({
         .join('\n');
 
       const imagePromptRequest = `
-        I need to create an illustration for page ${pageNum} of a children's storybook.
+        I need to create an illustration for page ${pageNum} of a children's storybook titled "${title}".
         
         The text on this page is: "${page.text}"
         
@@ -128,9 +147,18 @@ export async function generateStory({
         
         Create a detailed, vivid image prompt for DALL-E that will:
         1. Accurately represent the scene described in the text
-        2. Include all the mentioned entities with their visual characteristics
+        2. Include all mentioned characters with EXACT visual consistency based on their detailed descriptions
         3. Be appropriate for children aged ${ageRange} years
         4. Have a cohesive style matching a ${storyType} story
+        5. Maintain consistency with the visual style of previous illustrations
+        
+        Be extremely detailed about character appearance, ensuring that:
+        - Every visual feature (hair color/style, clothing, etc.) matches the description exactly
+        - Facial expressions match the emotional context of the scene
+        - Body proportions and sizes remain consistent throughout the story
+        - Character positioning clearly shows their relationships and actions
+        
+        Focus on the main action or scene from the text, but include all characters mentioned.
         
         Give me ONLY the image prompt text without any explanations or formatting.
       `;
@@ -215,6 +243,10 @@ export async function generateImage(
     let artStyle: string = 'colorful';
     let entities: StoryEntity[] = [];
     
+    // Generate a consistent seed for style consistency across all story images
+    // This helps maintain the same artistic style throughout the story
+    const seed = Math.floor(Math.random() * 1000000).toString();
+    
     // Handle both simple string prompts and complex options
     if (typeof prompt === 'string') {
       // Simple case: just a string prompt
@@ -240,17 +272,23 @@ export async function generateImage(
       
       let enhancedPrompt = finalPrompt;
       
-      // Add character details to the prompt
+      // Add character details to the prompt with much more detailed descriptions
       if (characters.length > 0) {
-        enhancedPrompt += "\n\nInclude these characters with consistent appearances:";
+        enhancedPrompt += "\n\n## CHARACTERS (Maintain exact visual consistency throughout story)";
         characters.forEach(char => {
+          // Add more structured character details to help DALL-E maintain consistency
           enhancedPrompt += `\n- ${char.name}: ${char.description}`;
+          // Extract potential visual attributes from the description if possible
+          const attributes = extractVisualAttributes(char.description);
+          if (attributes.length > 0) {
+            enhancedPrompt += `\n  Visual attributes: ${attributes.join(", ")}`;
+          }
         });
       }
       
       // Add location details to the prompt
       if (locations.length > 0) {
-        enhancedPrompt += "\n\nInclude these locations with consistent appearances:";
+        enhancedPrompt += "\n\n## SETTINGS (Maintain consistent appearance)";
         locations.forEach(loc => {
           enhancedPrompt += `\n- ${loc.name}: ${loc.description}`;
         });
@@ -258,7 +296,7 @@ export async function generateImage(
       
       // Add object details to the prompt
       if (objects.length > 0) {
-        enhancedPrompt += "\n\nInclude these objects with consistent appearances:";
+        enhancedPrompt += "\n\n## OBJECTS (Maintain consistent appearance)";
         objects.forEach(obj => {
           enhancedPrompt += `\n- ${obj.name}: ${obj.description}`;
         });
@@ -271,13 +309,24 @@ export async function generateImage(
     // Create a comprehensive prompt with formatting and style instructions
     // This wrapping helps DALL-E understand the context and requirements
     const wrappedPrompt = `
+# CHILDREN'S BOOK ILLUSTRATION DIRECTIVE
 Create a high-quality children's book illustration in ${formattedArtStyle} style with a landscape format.
-Make all visual elements consistent with previous illustrations in the story.
-Ensure characters, locations, and objects maintain their exact same appearance across all illustrations.
 
+## CONSISTENCY REQUIREMENTS
+This is part of a storybook series - maintain ABSOLUTE visual consistency with previous illustrations:
+- Characters must maintain identical appearance, clothing, colors, and proportions between images
+- Maintain consistent art style, color palette, and level of detail throughout the story
+- Maintain consistent perspective, scale, and positioning of recurring elements
+
+## SCENE DESCRIPTION
 ${finalPrompt}
 
-The illustration should be bright, engaging, and appropriate for children's books with clear details.
+## STYLISTIC GUIDELINES
+- Bright, engaging colors appropriate for children's books
+- Clear, detailed illustrations with simplified backgrounds
+- Expressive character faces showing clear emotions
+- No text in the image
+- Maintain the same artistic style throughout the entire storybook
 `;
 
     // Log the prompt for debugging purposes
@@ -326,4 +375,40 @@ The illustration should be bright, engaging, and appropriate for children's book
     console.error("Error generating image:", error);
     throw new Error(`Failed to generate image: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/**
+ * Helper function to extract visual attributes from a character description
+ * This helps create more structured prompts for DALL-E to maintain character consistency
+ * 
+ * @param description - The character description text
+ * @returns Array of extracted visual attributes
+ */
+function extractVisualAttributes(description: string): string[] {
+  const attributes: string[] = [];
+  
+  // Common visual attributes to look for in descriptions
+  const attributeKeywords = [
+    'hair', 'eyes', 'face', 'skin', 'clothing', 'outfit', 'wears', 'wearing',
+    'hat', 'color', 'height', 'tall', 'short', 'medium', 'build', 'age', 
+    'young', 'old', 'middle-aged', 'child', 'adult', 'teen', 'appearance'
+  ];
+  
+  // Split description into sentences for analysis
+  const sentences = description.split(/[.!?]+/);
+  
+  // Check each sentence for visual attributes
+  sentences.forEach(sentence => {
+    attributeKeywords.forEach(keyword => {
+      if (sentence.toLowerCase().includes(keyword)) {
+        // Clean up the sentence and add to attributes if not already included
+        const cleanSentence = sentence.trim();
+        if (cleanSentence && !attributes.includes(cleanSentence)) {
+          attributes.push(cleanSentence);
+        }
+      }
+    });
+  });
+  
+  return attributes;
 }
