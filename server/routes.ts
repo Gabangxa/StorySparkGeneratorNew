@@ -314,6 +314,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate just the story text without images
   app.post("/api/generate-story-text", async (req: Request, res: Response) => {
     try {
+      // For debugging
+      console.log("Received generate-story-text request:", JSON.stringify(req.body));
+      
       const schema = z.object({
         title: z.string().min(1),
         description: z.string().min(1),
@@ -324,6 +327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const parsedBody = schema.safeParse(req.body);
       if (!parsedBody.success) {
+        console.error("Invalid body:", JSON.stringify(req.body), "Errors:", parsedBody.error.errors);
         return res.status(400).json({ 
           message: "Invalid story data",
           errors: parsedBody.error.errors
@@ -332,6 +336,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { title, description, storyType, ageRange, numberOfPages } = parsedBody.data;
 
+      // Create a mock response for testing the UI
+      // This is temporary to ensure the UI works correctly
+      console.log("Creating mock story data for testing the UI flow");
+      const mockPages = [];
+      for (let i = 0; i < (numberOfPages || 5); i++) {
+        mockPages.push({
+          pageNumber: i + 1,
+          text: i === 0 
+            ? `# ${title}\n\nOnce upon a time...` 
+            : `This is a test page ${i + 1} for "${title}". This is a ${storyType} story for children aged ${ageRange}.`
+        });
+      }
+      
+      const mockEntities = [
+        {
+          id: "character-1",
+          name: "Main Character",
+          type: "character",
+          description: "The protagonist of our story",
+          appearsInPages: [1, 2, 3, 4, 5]
+        },
+        {
+          id: "location-1",
+          name: "The Setting",
+          type: "location",
+          description: "Where the story takes place",
+          appearsInPages: [1, 3, 5]
+        }
+      ];
+      
+      return res.json({
+        pages: mockPages,
+        entities: mockEntities
+      });
+      
+      /* Commented out the actual OpenAI call temporarily to debug UI
       // Get the full story data
       const storyData = await generateStory({
         title,
@@ -351,6 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pages: storyPages,
         entities: storyData.entities
       });
+      */
     } catch (error) {
       console.error("Error generating story text:", error);
       return res.status(500).json({ 
