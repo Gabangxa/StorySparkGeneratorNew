@@ -2,12 +2,14 @@ import { ART_STYLES, type ArtStyle } from "@shared/schema";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Import SVG assets
-import animeStyleImage from "@/assets/anime-style.svg";
-import watercolorStyleImage from "@/assets/watercolor-style.svg";
-import cartoon3dStyleImage from "@/assets/3d-cartoon-style.svg";
-import pixelArtStyleImage from "@/assets/pixel-art-style.svg";
-import comicBookStyleImage from "@/assets/comic-book-style.svg";
+// Import SVG assets from the assets directory
+import {
+  animeStyleImage,
+  watercolorStyleImage,
+  cartoon3dStyleImage,
+  pixelArtStyleImage,
+  comicBookStyleImage
+} from "@/assets";
 
 interface ArtStyleCardProps {
   style: ArtStyle;
