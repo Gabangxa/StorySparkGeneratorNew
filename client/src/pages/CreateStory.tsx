@@ -30,10 +30,13 @@ import ArtStyleCard from "@/components/ArtStyleCard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export default function CreateStory() {
   const [step, setStep] = useState<Step>(1);
+  const [storyText, setStoryText] = useState<Array<{ text: string; pageNumber: number }>>([]);
+  const [characterDescriptions, setCharacterDescriptions] = useState<Record<string, string>>({});
+  const [useAICharacters, setUseAICharacters] = useState(true);
   const [previewData, setPreviewData] = useState<{
     pages: Array<{ text: string; imagePrompt: string; entities: string[] }>;
     entities: StoryEntityWithAppearances[];
@@ -131,21 +134,35 @@ export default function CreateStory() {
         <div className={`${step === 1 ? "bg-[#FF6B6B]" : step > 1 ? "bg-gray-300" : "bg-gray-200"} text-white rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
           {step > 1 ? "✓" : "1"}
         </div>
-        <span className={step === 1 ? "font-bold" : step > 1 ? "text-gray-500" : ""}>Describe</span>
+        <span className={step === 1 ? "font-bold" : step > 1 ? "text-gray-500" : ""}>Story Details</span>
       </div>
       
       <div className="flex items-center mb-4 md:mb-0 mr-6">
         <div className={`${step === 2 ? "bg-[#FF6B6B]" : step > 2 ? "bg-gray-300" : "bg-gray-200"} ${step === 2 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
           {step > 2 ? "✓" : "2"}
         </div>
-        <span className={step === 2 ? "font-bold" : ""}>Customize</span>
+        <span className={step === 2 ? "font-bold" : ""}>Edit Story</span>
+      </div>
+      
+      <div className="flex items-center mb-4 md:mb-0 mr-6">
+        <div className={`${step === 3 ? "bg-[#FF6B6B]" : step > 3 ? "bg-gray-300" : "bg-gray-200"} ${step === 3 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
+          {step > 3 ? "✓" : "3"}
+        </div>
+        <span className={step === 3 ? "font-bold" : ""}>Characters</span>
+      </div>
+      
+      <div className="flex items-center mb-4 md:mb-0 mr-6">
+        <div className={`${step === 4 ? "bg-[#FF6B6B]" : step > 4 ? "bg-gray-300" : "bg-gray-200"} ${step === 4 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
+          {step > 4 ? "✓" : "4"}
+        </div>
+        <span className={step === 4 ? "font-bold" : ""}>Art Style</span>
       </div>
       
       <div className="flex items-center mb-4 md:mb-0">
-        <div className={`${step === 3 ? "bg-[#FF6B6B]" : "bg-gray-200"} ${step === 3 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
-          3
+        <div className={`${step === 5 ? "bg-[#FF6B6B]" : "bg-gray-200"} ${step === 5 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
+          5
         </div>
-        <span className={step === 3 ? "font-bold" : ""}>Generate</span>
+        <span className={step === 5 ? "font-bold" : ""}>Generate</span>
       </div>
     </div>
   );
