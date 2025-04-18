@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Comic Book style icon -->
+  <rect width="100" height="100" fill="#FFFDE7"/>
+  
+  <!-- Comic panels -->
+  <rect x="10" y="10" width="35" height="35" fill="#FFF9C4" stroke="#212121" stroke-width="2"/>
+  <rect x="55" y="10" width="35" height="35" fill="#FFF9C4" stroke="#212121" stroke-width="2"/>
+  <rect x="10" y="55" width="80" height="35" fill="#FFF9C4" stroke="#212121" stroke-width="2"/>
+  
+  <!-- Comic elements -->
+  <circle cx="30" cy="25" r="10" fill="#FF6B6B" stroke="#212121" stroke-width="2"/>
+  <path d="M70,25 L85,15 M70,25 L85,35" fill="none" stroke="#212121" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="70" cy="25" r="10" fill="#4ECDC4" stroke="#212121" stroke-width="2"/>
+  
+  <!-- Speech bubble -->
+  <path d="M30,75 C30,65 40,60 50,60 C60,60 70,65 70,75 C70,85 60,90 50,90 C45,90 40,88 36,85 L25,90 L30,80 C28,78 27,77 30,75" fill="white" stroke="#212121" stroke-width="2"/>
+  
+  <!-- Comic text -->
+  <path d="M45,70 L55,70 M43,75 L57,75 M48,80 L52,80" fill="none" stroke="#212121" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Action lines -->
+  <path d="M15,20 L25,15 M15,25 L25,25 M15,30 L25,35" fill="none" stroke="#212121" stroke-width="1" stroke-linecap="round"/>
+  <path d="M75,20 L85,15 M75,25 L85,25 M75,30 L85,35" fill="none" stroke="#212121" stroke-width="1" stroke-linecap="round"/>
+</svg>

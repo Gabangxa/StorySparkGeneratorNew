@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 3D Cartoon style icon -->
+  <rect width="100" height="100" fill="#f0f5ff"/>
+  
+  <!-- 3D Cube -->
+  <path d="M30,30 L70,30 L70,70 L30,70 Z" fill="#6200EA" fill-opacity="0.7"/>
+  <path d="M30,30 L50,15 L90,15 L70,30 Z" fill="#9575CD" fill-opacity="0.8"/>
+  <path d="M70,30 L90,15 L90,55 L70,70 Z" fill="#7E57C2" fill-opacity="0.9"/>
+  
+  <!-- Character face -->
+  <circle cx="50" cy="50" r="15" fill="#FFD54F"/>
+  <circle cx="44" cy="45" r="3" fill="#212121"/>
+  <circle cx="56" cy="45" r="3" fill="#212121"/>
+  <path d="M45,55 Q50,60 55,55" fill="none" stroke="#212121" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Light reflections -->
+  <circle cx="65" cy="35" r="2" fill="white" fill-opacity="0.9"/>
+  <circle cx="35" cy="65" r="3" fill="white" fill-opacity="0.6"/>
+</svg>

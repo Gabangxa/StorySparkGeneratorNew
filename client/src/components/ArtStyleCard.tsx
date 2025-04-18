@@ -2,6 +2,13 @@ import { ART_STYLES, type ArtStyle } from "@shared/schema";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Import SVG assets
+import animeStyleImage from "@/assets/anime-style.svg";
+import watercolorStyleImage from "@/assets/watercolor-style.svg";
+import cartoon3dStyleImage from "@/assets/3d-cartoon-style.svg";
+import pixelArtStyleImage from "@/assets/pixel-art-style.svg";
+import comicBookStyleImage from "@/assets/comic-book-style.svg";
+
 interface ArtStyleCardProps {
   style: ArtStyle;
   selected: boolean;
@@ -12,27 +19,27 @@ const artStyleConfig = {
   anime: {
     title: "Anime/Manga",
     description: "Expressive characters with Japanese-inspired aesthetics",
-    imageUrl: "https://images.unsplash.com/photo-1614898983622-f20044c60b30?auto=format&fit=crop&w=300"
+    imageUrl: animeStyleImage
   },
   watercolor: {
     title: "Watercolor",
     description: "Soft, dreamy illustrations with gentle colors",
-    imageUrl: "https://images.unsplash.com/photo-1618945524163-32451704cbb8?auto=format&fit=crop&w=300"
+    imageUrl: watercolorStyleImage
   },
   "3d_cartoon": {
     title: "3D Cartoon",
     description: "Modern, vibrant illustrations with depth",
-    imageUrl: "https://images.unsplash.com/photo-1594050753831-dd6de31c7f97?auto=format&fit=crop&w=300" 
+    imageUrl: cartoon3dStyleImage
   },
   pixel_art: {
     title: "Pixel Art",
     description: "Retro-inspired digital illustrations",
-    imageUrl: "https://images.unsplash.com/photo-1633340442431-331e408df323?auto=format&fit=crop&w=300"
+    imageUrl: pixelArtStyleImage
   },
   comic_book: {
     title: "Comic Book",
     description: "Bold, action-oriented illustrations with outlines",
-    imageUrl: "https://images.unsplash.com/photo-1588497859490-85d1c17db96d?auto=format&fit=crop&w=300"
+    imageUrl: comicBookStyleImage
   }
 };
 
@@ -47,11 +54,11 @@ export default function ArtStyleCard({ style, selected, onClick }: ArtStyleCardP
       )}
       onClick={() => onClick(style)}
     >
-      <div className="h-48 overflow-hidden relative">
+      <div className="h-48 overflow-hidden relative bg-gray-50 flex items-center justify-center p-4">
         <img 
           src={config.imageUrl}
           alt={`${config.title} style illustration`}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
         />
         {selected && (
           <div className="absolute top-2 right-2 bg-[#FF6B6B] text-white rounded-full w-8 h-8 flex items-center justify-center">

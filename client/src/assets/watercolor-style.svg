@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Watercolor style icon -->
+  <rect width="100" height="100" fill="#f5f8fa"/>
+  
+  <!-- Watercolor splashes -->
+  <path d="M20,20 C30,15 40,25 50,20 C60,15 70,25 80,20 C85,25 85,40 80,50 C85,60 80,70 70,80 C60,85 40,85 30,80 C20,70 15,60 20,50 C15,40 15,25 20,20" fill="#B3E5FC" fill-opacity="0.7"/>
+  
+  <!-- Artistic elements -->
+  <circle cx="35" cy="40" r="10" fill="#4FC3F7" fill-opacity="0.6"/>
+  <circle cx="65" cy="60" r="15" fill="#29B6F6" fill-opacity="0.5"/>
+  
+  <!-- Brush strokes -->
+  <path d="M25,60 C35,65 45,55 55,60 C65,65 75,55 85,60" fill="none" stroke="#01579B" stroke-width="2" stroke-opacity="0.3" stroke-linecap="round"/>
+  <path d="M30,30 C40,35 50,25 60,30 C70,35 80,25 90,30" fill="none" stroke="#0288D1" stroke-width="3" stroke-opacity="0.4" stroke-linecap="round"/>
+</svg>
