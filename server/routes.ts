@@ -76,10 +76,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Track entities that appear in multiple pages for special consistency enforcement
       const entityFrequency: Record<string, number> = {};
-      generatedStory.pages.forEach(page => {
+      
+      // Find first appearance page for each entity (for reference images)
+      const entityFirstAppearance: Record<string, number> = {};
+      
+      // Process pages to find entity frequency and first appearances
+      generatedStory.pages.forEach((page, pageIndex) => {
         const pageEntities = page.entities || [];
         pageEntities.forEach(entityId => {
+          // Count appearances
           entityFrequency[entityId] = (entityFrequency[entityId] || 0) + 1;
+          
+          // Record first appearance if not already recorded
+          if (entityFirstAppearance[entityId] === undefined) {
+            entityFirstAppearance[entityId] = pageIndex;
+          }
         });
       });
       
@@ -95,6 +106,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         map[entity.id] = entity;
         return map;
       }, {} as Record<string, StoryEntityWithAppearances>);
+      
+      // Track first image of each entity (URL) for visual consistency
+      const entityFirstImageURLs: Record<string, string> = {};
+      
+      // Track DALL-E reference images for characters
+      // These are the images that we'll reuse for visual consistency
+      const characterReferenceImages: Record<string, any> = {};
       
       // Generate illustrations for each page, processing sequentially to maintain consistency
       // This ensures that character appearances from early pages inform later ones
@@ -112,9 +130,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
-        // Add ALL entity descriptions to recurring characters to maintain stronger consistency
-        // This ensures that even if a character doesn't appear on the current page,
-        // their description is still included if they appear elsewhere in the story
+        // Keep track of which entities are making their first appearance on this page
+        const firstAppearanceEntities = pageEntities.filter(entityId => 
+          entityFirstAppearance[entityId] === index
+        );
+        
+        // Keep track of entities that have appeared before (for reference)
+        const recurringPageEntities = pageEntities.filter(entityId => 
+          entityFirstAppearance[entityId] !== index && 
+          entityFirstAppearance[entityId] !== undefined
+        );
+        
+        console.log(`Page ${index + 1} has ${firstAppearanceEntities.length} new entities and ${recurringPageEntities.length} recurring entities`);
+        
+        // Get primary entities for this page
         const pagePrimaryEntities = entities.filter(entity => pageEntities.includes(entity.id));
         
         // For maximum consistency, always include all recurring characters in every prompt
@@ -127,6 +156,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Combine all entities needed for this page
         const allRelevantEntities = [...pagePrimaryEntities, ...recurringEntityObjects];
         
+        // Build a reference image map for consistency with previous character appearances
+        const characterReferenceURLs: Record<string, string> = {};
+        
+        // Add references to characters that have appeared before
+        recurringPageEntities.forEach(entityId => {
+          if (entityFirstImageURLs[entityId]) {
+            characterReferenceURLs[entityId] = entityFirstImageURLs[entityId];
+          }
+        });
+        
         // Log page entity information for debugging and monitoring
         console.log(`Page ${index + 1}: ` + 
           `${pagePrimaryEntities.length} visible entities, ` +
@@ -135,10 +174,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Generate an illustration with our enhanced entity consistency approach
         const imageResult = await generateImage({
-          prompt: page.imagePrompt,                 // Base image description
-          entityReferenceIds: pageEntityRefs,       // References to maintain visual consistency
-          artStyle,                                 // User-selected art style
-          entities: allRelevantEntities             // ALL relevant entities including those from other pages
+          prompt: page.imagePrompt,                   // Base image description
+          entityReferenceIds: pageEntityRefs,         // References to maintain visual consistency
+          artStyle,                                   // User-selected art style
+          entities: allRelevantEntities,              // ALL relevant entities including those from other pages
+          characterReferenceURLs,                     // URLs of previous character images for reference
+          isFirstPage: index === 0                    // Flag if this is the first page of the story
         });
         
         // Process the result
@@ -157,7 +198,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               entityGenerationIds[entityId] = genId;
             });
           }
+          
+          // Store reference data for entities making their first appearance
+          if (imageResult.characterImageReferences) {
+            Object.entries(imageResult.characterImageReferences).forEach(([entityId, imageData]) => {
+              characterReferenceImages[entityId] = imageData;
+            });
+          }
         }
+        
+        // Store first image URLs for entities making their first appearance on this page
+        firstAppearanceEntities.forEach(entityId => {
+          entityFirstImageURLs[entityId] = imageUrl;
+        });
         
         // Add the completed page to our results
         pages.push({

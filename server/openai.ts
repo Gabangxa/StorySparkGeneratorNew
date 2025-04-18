@@ -209,6 +209,8 @@ interface GenerateImageOptions {
   entityReferenceIds?: { [key: string]: string };  // Map of entity IDs to DALL-E generation IDs for consistency
   artStyle?: string;                               // Artistic style for the illustration (anime, watercolor, etc.)
   entities?: StoryEntity[];                        // Story entities to highlight in the prompt for consistency
+  characterReferenceURLs?: { [key: string]: string };  // URLs of previous character images to reference
+  isFirstPage?: boolean;                           // Whether this is the first page of the story
 }
 
 /**
@@ -217,8 +219,9 @@ interface GenerateImageOptions {
  */
 interface GenerateImageResult {
   url: string;                                     // URL of the generated image
-  generatedIds?: { [key: string]: string };        // Entity IDs mapped to their generation IDs for future reference
+  generatedIds?: { [key: string]: string };        // Entity IDs mapped to their generation IDs for future reference 
   revised_prompt?: string;                         // The actual prompt sent to DALL-E after enhancements
+  characterImageReferences?: { [key: string]: any }; // Reference data for character images 
 }
 
 /**
@@ -247,6 +250,10 @@ export async function generateImage(
     // This helps maintain the same artistic style throughout the story
     const seed = Math.floor(Math.random() * 1000000).toString();
     
+    // Additional options for character reference
+    let characterReferenceURLs: { [key: string]: string } = {};
+    let isFirstPage: boolean = false;
+    
     // Handle both simple string prompts and complex options
     if (typeof prompt === 'string') {
       // Simple case: just a string prompt
@@ -258,6 +265,8 @@ export async function generateImage(
       entityReferenceIds = options.entityReferenceIds || {};
       artStyle = options.artStyle || 'colorful';
       entities = options.entities || [];
+      characterReferenceURLs = options.characterReferenceURLs || {};
+      isFirstPage = options.isFirstPage || false;
     }
 
     // Format the art style for the prompt (replace underscores with spaces)
@@ -322,10 +331,6 @@ export async function generateImage(
       finalPrompt = enhancedPrompt;
     }
     
-    // Create a more concise prompt with only essential formatting
-    // This helps avoid hitting DALL-E token limits
-    let wrappedPrompt = '';
-    
     // Limit the scene description to ensure we don't exceed token limits
     // Calculate approximately how much space we have for finalPrompt
     const MAX_PROMPT_LENGTH = 4000; // DALL-E 3 has a max token limit
@@ -335,9 +340,75 @@ export async function generateImage(
     const trimmedFinalPrompt = finalPrompt.length > availableLength 
       ? finalPrompt.substring(0, availableLength - 3) + "..." 
       : finalPrompt;
+      
+    // Variable to hold our final prompt content with consistency directives
+    let wrappedPrompt = "";
     
-    // Create a simpler prompt structure that's still effective
-    wrappedPrompt = `
+    // Check if we have any character reference URLs to mention
+    const hasCharacterReferences = Object.keys(characterReferenceURLs).length > 0;
+    
+    // Create different prompt templates based on whether this is the first page or not
+    if (isFirstPage) {
+      // For the first page, establish the character designs that will be referenced later
+      wrappedPrompt = `
+Create a children's book illustration in ${formattedArtStyle} style.
+
+IMPORTANT: This is the FIRST PAGE in a story. The character designs you create here will be referenced for consistency in all future illustrations.
+
+CLARITY REQUEST: Please draw all main characters clearly, with distinctive features that can be maintained consistently throughout the story.
+
+SCENE:
+${trimmedFinalPrompt}
+
+STYLE: Bright colors, clear details, expressive faces, child-friendly.
+`;
+    } else if (hasCharacterReferences) {
+      // For subsequent pages with character references, emphasize matching previous appearances
+      
+      // Get the character entities that have appeared before 
+      const characterReferencesWithEntities = Object.entries(characterReferenceURLs)
+        .map(([entityId, url]) => {
+          const entity = entities.find(e => e.id === entityId);
+          return entity ? { entity, url } : null;
+        })
+        .filter(Boolean) as Array<{ entity: StoryEntity, url: string }>;
+      
+      // Build a list of characters to maintain consistency with
+      const characterReferenceList = characterReferencesWithEntities
+        .map(({ entity }) => `- ${entity.name}`)
+        .join('\n');
+      
+      // Extract the most important visual attributes for each character
+      const characterAttributes = characterReferencesWithEntities
+        .map(({ entity }) => {
+          const attributes = extractVisualAttributes(entity.description).slice(0, 2);
+          return attributes.length > 0 
+            ? `${entity.name}: ${attributes.join(', ')}`
+            : null;
+        })
+        .filter(Boolean)
+        .join('\n');
+      
+      // Build a stronger consistency prompt with detailed references
+      wrappedPrompt = `
+Create a children's book illustration in ${formattedArtStyle} style.
+
+VISUAL CONSISTENCY: The following characters have appeared in previous illustrations and MUST look identical to their previous appearances:
+${characterReferenceList}
+
+CHARACTER DETAILS:
+${characterAttributes}
+
+IMPORTANT: Maintain exact visual consistency in character appearance, clothing, colors, and proportions with previous illustrations.
+
+SCENE:
+${trimmedFinalPrompt}
+
+STYLE: Bright colors, clear details, expressive faces, child-friendly.
+`;
+    } else {
+      // Standard prompt for other pages
+      wrappedPrompt = `
 Create a children's book illustration in ${formattedArtStyle} style.
 
 CONSISTENCY: Characters must maintain identical appearance, clothing, colors between all images.
@@ -347,6 +418,7 @@ ${trimmedFinalPrompt}
 
 STYLE: Bright colors, clear details, expressive faces, child-friendly.
 `;
+    }
 
     // Log the prompt for debugging purposes
     console.log("Generating image with prompt:", wrappedPrompt);
@@ -386,16 +458,38 @@ STYLE: Bright colors, clear details, expressive faces, child-friendly.
       return response.data[0].url;
     }
     
+    // Create a map of character image references for entities in this image
+    // This helps maintain visual consistency across pages
+    const characterImageReferences: { [key: string]: any } = {};
+    
+    // If this is the first page or we have important characters,
+    // store references to their appearances for future pages
+    if (isFirstPage || Object.keys(characterReferenceURLs).length === 0) {
+      // Get character entities that appear on this page
+      const pageCharacters = entities.filter(e => e.type === 'character');
+      
+      // Store simple reference to the character's first appearance
+      // In a production system, we would extract more detailed reference data
+      pageCharacters.forEach(character => {
+        characterImageReferences[character.id] = {
+          imageUrl: response.data[0].url,
+          characterName: character.name,
+          timestamp: new Date().toISOString()
+        };
+      });
+    }
+    
     // For complex options, return a complete result object with metadata
     return {
       url: response.data[0].url,
       revised_prompt: revised_prompt,
       generatedIds: {
         // Store entity IDs mapped to DALL-E's internal reference system
-        // In a production system, we would extract these from OpenAI's response
         // For now, we maintain the existing dictionary
         ...entityReferenceIds
-      }
+      },
+      // Include reference data for characters to maintain consistency
+      characterImageReferences
     };
   } catch (error) {
     // Comprehensive error handling
