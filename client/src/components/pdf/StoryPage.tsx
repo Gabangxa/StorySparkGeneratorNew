@@ -37,6 +37,7 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+    objectFit: 'contain',
   },
   // Placeholder shown when image fails to load
   placeholderImage: {
@@ -92,6 +93,21 @@ interface PDFStoryPageProps {
 }
 
 /**
+ * Helper function to get a proxied image URL
+ * This converts external URLs to use our proxy route
+ * to avoid CORS and cross-origin issues with PDF rendering
+ */
+function getProxiedImageUrl(url: string): string {
+  // If already a relative URL, use as is
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, use our image proxy
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
+/**
  * Component for rendering a single page in the PDF storybook
  * Supports two layout types: side-by-side and picture-top
  * 
@@ -116,6 +132,9 @@ export default function PDFStoryPage({ page, layoutType, totalPages }: PDFStoryP
     ));
   };
 
+  // Process the image URL to use our proxy if it's an external URL
+  const imageUrl = page.imageUrl ? getProxiedImageUrl(page.imageUrl) : null;
+
   // Render page with side-by-side layout (image on left, text on right)
   if (layoutType === 'side_by_side') {
     return (
@@ -123,9 +142,9 @@ export default function PDFStoryPage({ page, layoutType, totalPages }: PDFStoryP
         <View style={styles.sideByPage}>
           {/* Image container (left side) */}
           <View style={styles.imageContainer}>
-            {page.imageUrl ? (
-              // Display the image if URL is available
-              <Image src={page.imageUrl} style={styles.image} cache={false} />
+            {imageUrl ? (
+              // Display the image through our proxy
+              <Image src={imageUrl} style={styles.image} cache={true} />
             ) : (
               // Show a placeholder if image is not available
               <View style={styles.placeholderImage}>
@@ -151,9 +170,9 @@ export default function PDFStoryPage({ page, layoutType, totalPages }: PDFStoryP
         <View style={styles.pictureTopPage}>
           {/* Image container (top) - larger proportion for the image */}
           <View style={[styles.imageContainer, { flex: 3 }]}>
-            {page.imageUrl ? (
-              // Display the image if URL is available
-              <Image src={page.imageUrl} style={styles.image} cache={false} />
+            {imageUrl ? (
+              // Display the image through our proxy
+              <Image src={imageUrl} style={styles.image} cache={true} />
             ) : (
               // Show a placeholder if image is not available
               <View style={styles.placeholderImage}>

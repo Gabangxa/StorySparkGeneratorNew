@@ -457,6 +457,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  /**
+   * Image proxy for PDF rendering
+   * Fetches images from external URLs and serves them locally
+   * This helps with CORS issues when generating PDFs
+   */
+  app.get("/api/image-proxy", async (req: Request, res: Response) => {
+    try {
+      const url = req.query.url as string;
+      
+      if (!url) {
+        return res.status(400).json({ message: "URL parameter is required" });
+      }
+      
+      // Validate that this is from an expected domain to prevent abuse
+      const validDomains = [
+        "oaidalleapiprodscus.blob.core.windows.net",
+        "openai-labs-public-images-prod.azureedge.net"
+      ];
+      
+      const isValidUrl = validDomains.some(domain => url.includes(domain));
+      if (!isValidUrl) {
+        return res.status(400).json({ message: "Invalid image URL domain" });
+      }
+      
+      // Fetch and stream the image
+      const imageResponse = await fetch(url);
+      
+      if (!imageResponse.ok) {
+        return res.status(imageResponse.status).json({ 
+          message: `Failed to fetch image: ${imageResponse.statusText}` 
+        });
+      }
+      
+      // Get content type and set appropriate headers
+      const contentType = imageResponse.headers.get('content-type');
+      if (contentType) {
+        res.setHeader('Content-Type', contentType);
+      }
+      
+      // Stream the image data to the response
+      const blob = await imageResponse.blob();
+      const buffer = Buffer.from(await blob.arrayBuffer());
+      return res.send(buffer);
+      
+    } catch (error) {
+      console.error("Error in image proxy:", error);
+      return res.status(500).json({ 
+        message: "Failed to proxy image", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
