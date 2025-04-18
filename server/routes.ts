@@ -311,6 +311,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Generate just the story text without images
+  app.post("/api/generate-story-text", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        title: z.string().min(1),
+        description: z.string().min(1),
+        storyType: z.string().min(1),
+        ageRange: z.string().min(1),
+        numberOfPages: z.number().min(1).optional()
+      });
+      
+      const parsedBody = schema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ 
+          message: "Invalid story data",
+          errors: parsedBody.error.errors
+        });
+      }
+
+      const { title, description, storyType, ageRange, numberOfPages } = parsedBody.data;
+
+      // Get the full story data
+      const storyData = await generateStory({
+        title,
+        description,
+        storyType,
+        ageRange,
+        numberOfPages: numberOfPages || 5
+      });
+      
+      // Return just the text content for each page
+      const storyPages = storyData.pages.map((page, index) => ({
+        pageNumber: index + 1,
+        text: page.text
+      }));
+      
+      return res.json({
+        pages: storyPages,
+        entities: storyData.entities
+      });
+    } catch (error) {
+      console.error("Error generating story text:", error);
+      return res.status(500).json({ 
+        message: "Failed to generate story text", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Update story text after user edits
+  app.post("/api/update-story-text", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        pages: z.array(z.object({
+          pageNumber: z.number(),
+          text: z.string()
+        }))
+      });
+      
+      const parsedBody = schema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ 
+          message: "Invalid story data",
+          errors: parsedBody.error.errors
+        });
+      }
+
+      // In a production app, you might want to save these changes to a database
+      // For now, we'll just return the updated pages to confirm they were received
+      return res.json({
+        success: true,
+        pages: parsedBody.data.pages
+      });
+    } catch (error) {
+      console.error("Error updating story text:", error);
+      return res.status(500).json({ 
+        message: "Failed to update story text", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   /**
    * API endpoint for generating a single illustration with entity consistency
    * This endpoint can be used independently to generate one-off images
