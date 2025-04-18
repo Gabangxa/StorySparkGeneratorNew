@@ -1,0 +1,41 @@
+Error generating image: BadRequestError: 400 Error in request. Please check your input.
+    at Function.generate (/home/runner/workspace/node_modules/openai/src/error.ts:72:14)
+    at OpenAI.makeStatusError (/home/runner/workspace/node_modules/openai/src/core.ts:462:21)
+    at OpenAI.makeRequest (/home/runner/workspace/node_modules/openai/src/core.ts:526:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateImage (/home/runner/workspace/server/openai.ts:446:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:176:29) {
+  status: 400,
+  headers: {
+    'alt-svc': 'h3=":443"; ma=86400',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '932412b798f57cc4-ATL',
+    connection: 'keep-alive',
+    'content-length': '154',
+    'content-type': 'application/json',
+    date: 'Fri, 18 Apr 2025 12:12:54 GMT',
+    'openai-organization': 'user-s0mi7nht26bexng3fkhk8x0m',
+    'openai-processing-ms': '34',
+    'openai-version': '2020-10-01',
+    server: 'cloudflare',
+    'set-cookie': '__cf_bm=JEiDioU49mrD_BrU9fvUQAT.5KZvoI__h6tiABYSxiA-1744978374-1.0.1.1-s.dOWbZhvAykUKFxA.7d2ezsVxRLj.N3ABUId1pcTeBiJEi5q9EtNXrtVqnfWpJWVJC6hVxlZif0UFT1v1JcWZTsF6eLpG_hUalqznUuZyg; path=/; expires=Fri, 18-Apr-25 12:42:54 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=.HY8bs0sOoR_ay8ONb7V8uWUpHuSC.vlTaoTHFUfymY-1744978374421-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'x-content-type-options': 'nosniff',
+    'x-request-id': 'req_cc449dd7950092d5d518c328f8e736f3'
+  },
+  request_id: 'req_cc449dd7950092d5d518c328f8e736f3',
+  error: {
+    message: 'Error in request. Please check your input.',
+    type: 'invalid_request_error',
+    param: null,
+    code: null
+  },
+  code: null,
+  param: null,
+  type: 'invalid_request_error'
+}
+Error creating story: Error: Failed to generate image: 400 Error in request. Please check your input.
+    at generateImage (/home/runner/workspace/server/openai.ts:497:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:176:29)
+12:12:54 PM [express] POST /api/stories 500 in 56772ms :: {"message":"Failed to create story","error"…

@@ -281,60 +281,56 @@ export async function generateImage(
       
       let enhancedPrompt = finalPrompt;
       
-      const MAX_DESCRIPTION_LENGTH = 200; // Limit individual descriptions to avoid token issues
+      const MAX_DESCRIPTION_LENGTH = 100; // Much shorter descriptions to avoid token issues
+      const MAX_CHARACTERS = 3; // Limit number of characters described in prompt
       
-      // Add character details to the prompt with more concise descriptions
+      // Add character details to the prompt with very concise descriptions
       if (characters.length > 0) {
         enhancedPrompt += "\n\nCHARACTERS:";
-        characters.forEach(char => {
-          // Trim description to prevent exceeding token limits
-          const trimmedDescription = char.description.length > MAX_DESCRIPTION_LENGTH
-            ? char.description.substring(0, MAX_DESCRIPTION_LENGTH) + "..."
-            : char.description;
-            
-          // Add character details in a concise format
-          enhancedPrompt += `\n- ${char.name}: ${trimmedDescription}`;
+        
+        // Only include the most important characters (limit to MAX_CHARACTERS)
+        const primaryCharacters = characters.slice(0, MAX_CHARACTERS);
+        
+        primaryCharacters.forEach(char => {
+          // Get just core visual attributes instead of full description
+          const attributes = extractVisualAttributes(char.description).slice(0, 2);
           
-          // Extract only the most important visual attributes (limited to 3)
-          const attributes = extractVisualAttributes(char.description).slice(0, 3);
-          if (attributes.length > 0) {
-            enhancedPrompt += `\n  Key features: ${attributes.join("; ")}`;
-          }
+          // Create a very concise character description
+          const keyAttributes = attributes.length > 0 
+            ? attributes.join(". ") 
+            : char.description.substring(0, MAX_DESCRIPTION_LENGTH);
+            
+          // Add just the name and key attributes
+          enhancedPrompt += `\n- ${char.name}: ${keyAttributes}`;
         });
+        
+        // If there are more characters than our limit, just mention their names
+        if (characters.length > MAX_CHARACTERS) {
+          const remainingCharacters = characters.slice(MAX_CHARACTERS).map(c => c.name).join(", ");
+          enhancedPrompt += `\n- Others: ${remainingCharacters}`;
+        }
       }
       
-      // Add location details to the prompt (simplified)
-      if (locations.length > 0 && locations.length <= 2) { // Limit to 2 locations max
-        enhancedPrompt += "\n\nSETTINGS:";
-        locations.forEach(loc => {
-          const trimmedDescription = loc.description.length > MAX_DESCRIPTION_LENGTH
-            ? loc.description.substring(0, MAX_DESCRIPTION_LENGTH) + "..."
-            : loc.description;
-            
-          enhancedPrompt += `\n- ${loc.name}: ${trimmedDescription}`;
-        });
+      // Add minimal location details (just name for context)
+      if (locations.length > 0) {
+        enhancedPrompt += "\n\nSETTING: ";
+        enhancedPrompt += locations.map(loc => loc.name).join(", ");
       }
       
-      // Add object details only if they're few and important
-      if (objects.length > 0 && objects.length <= 2) { // Limit to 2 objects max
-        enhancedPrompt += "\n\nOBJECTS:";
-        objects.forEach(obj => {
-          const trimmedDescription = obj.description.length > MAX_DESCRIPTION_LENGTH
-            ? obj.description.substring(0, MAX_DESCRIPTION_LENGTH) + "..."
-            : obj.description;
-            
-          enhancedPrompt += `\n- ${obj.name}: ${trimmedDescription}`;
-        });
+      // Add minimal object details (just name for context)
+      if (objects.length > 0) {
+        enhancedPrompt += "\n\nOBJECTS: ";
+        enhancedPrompt += objects.map(obj => obj.name).join(", ");
       }
       
       // Update the prompt with entity information
       finalPrompt = enhancedPrompt;
     }
     
-    // Limit the scene description to ensure we don't exceed token limits
-    // Calculate approximately how much space we have for finalPrompt
-    const MAX_PROMPT_LENGTH = 4000; // DALL-E 3 has a max token limit
-    const WRAPPER_LENGTH = 400; // Approximate length of our wrappers
+    // Use much stricter limits for DALL-E prompts
+    // This helps avoid hitting API token limits
+    const MAX_PROMPT_LENGTH = 1000; // Significantly reduced max length
+    const WRAPPER_LENGTH = 200; // Approximate length of our wrappers
     
     const availableLength = MAX_PROMPT_LENGTH - WRAPPER_LENGTH;
     const trimmedFinalPrompt = finalPrompt.length > availableLength 
@@ -349,18 +345,16 @@ export async function generateImage(
     
     // Create different prompt templates based on whether this is the first page or not
     if (isFirstPage) {
-      // For the first page, establish the character designs that will be referenced later
+      // Very concise first page prompt
       wrappedPrompt = `
 Create a children's book illustration in ${formattedArtStyle} style.
 
-IMPORTANT: This is the FIRST PAGE in a story. The character designs you create here will be referenced for consistency in all future illustrations.
-
-CLARITY REQUEST: Please draw all main characters clearly, with distinctive features that can be maintained consistently throughout the story.
+FIRST PAGE: Character designs will be referenced for consistency in future pages.
 
 SCENE:
 ${trimmedFinalPrompt}
 
-STYLE: Bright colors, clear details, expressive faces, child-friendly.
+STYLE: Bright colors, child-friendly.
 `;
     } else if (hasCharacterReferences) {
       // For subsequent pages with character references, emphasize matching previous appearances
@@ -389,34 +383,29 @@ STYLE: Bright colors, clear details, expressive faces, child-friendly.
         .filter(Boolean)
         .join('\n');
       
-      // Build a stronger consistency prompt with detailed references
+      // Limit character reference details to prevent token limit issues
+      const limitedCharacterList = characterReferenceList.split('\n').slice(0, 3).join('\n');
+      
+      // Use a more concise prompt format
       wrappedPrompt = `
 Create a children's book illustration in ${formattedArtStyle} style.
 
-VISUAL CONSISTENCY: The following characters have appeared in previous illustrations and MUST look identical to their previous appearances:
-${characterReferenceList}
-
-CHARACTER DETAILS:
-${characterAttributes}
-
-IMPORTANT: Maintain exact visual consistency in character appearance, clothing, colors, and proportions with previous illustrations.
+CONSISTENCY: Characters (${characterReferencesWithEntities.map(({entity}) => entity.name).join(', ')}) must look identical to prior pages.
 
 SCENE:
 ${trimmedFinalPrompt}
 
-STYLE: Bright colors, clear details, expressive faces, child-friendly.
+STYLE: Bright colors, child-friendly illustrations.
 `;
     } else {
-      // Standard prompt for other pages
+      // Very concise standard prompt
       wrappedPrompt = `
 Create a children's book illustration in ${formattedArtStyle} style.
-
-CONSISTENCY: Characters must maintain identical appearance, clothing, colors between all images.
 
 SCENE:
 ${trimmedFinalPrompt}
 
-STYLE: Bright colors, clear details, expressive faces, child-friendly.
+STYLE: Bright colors, child-friendly.
 `;
     }
 
