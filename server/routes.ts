@@ -528,11 +528,17 @@ Child-friendly, bright colors with crisp details.
       // Validate that this is from an expected domain to prevent abuse
       const validDomains = [
         "oaidalleapiprodscus.blob.core.windows.net",
-        "openai-labs-public-images-prod.azureedge.net"
+        "openai-labs-public-images-prod.azureedge.net",
+        "cdn.openai.com",
+        "dalle-image-prod.azureedge.net"
       ];
       
-      const isValidUrl = validDomains.some(domain => url.includes(domain));
+      // Also allow any OpenAI-related domains
+      const isOpenAIDomain = url.includes('openai') || url.includes('dalle');
+      const isValidUrl = validDomains.some(domain => url.includes(domain)) || isOpenAIDomain;
+      
       if (!isValidUrl) {
+        console.log(`Rejecting URL: ${url}`);
         return res.status(400).json({ message: "Invalid image URL domain" });
       }
       
