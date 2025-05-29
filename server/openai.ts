@@ -3,7 +3,9 @@ import { StoryEntity } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Separate OpenAI clients for different services
+const openaiText = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openaiImage = new OpenAI({ apiKey: process.env.DALL_E });
 
 // Types for story generation
 export type GenerateStoryRequest = {
@@ -91,7 +93,7 @@ export async function generateStory({
   `;
 
   try {
-    const entityResponse = await openai.chat.completions.create({
+    const entityResponse = await openaiText.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: entityExtractionPrompt }],
       response_format: { type: "json_object" },
@@ -163,7 +165,7 @@ export async function generateStory({
         Give me ONLY the image prompt text without any explanations or formatting.
       `;
 
-      const imagePromptResponse = await openai.chat.completions.create({
+      const imagePromptResponse = await openaiText.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: imagePromptRequest }],
       });
@@ -431,8 +433,8 @@ STYLE: Bright colors, child-friendly.
       // requestParams.reference_image_ids = Object.values(entityReferenceIds);
     }
     
-    // Call the OpenAI API to generate the image
-    const response = await openai.images.generate(requestParams);
+    // Call the OpenAI API to generate the image using DALL-E 3
+    const response = await openaiImage.images.generate(requestParams);
 
     // Validate the response
     if (!response.data[0].url) {
