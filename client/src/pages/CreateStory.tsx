@@ -148,7 +148,7 @@ export default function CreateStory() {
       Object.keys(images).forEach(id => approvals[id] = true);
       setApprovedCharacters(approvals);
       // Move to character review step
-      setStep(4);
+      setStep(5);
     },
     onError: (error) => {
       console.error('Error generating character images:', error);
@@ -905,18 +905,130 @@ export default function CreateStory() {
         </Button>
         
         <Button 
-          onClick={nextStep}
+          onClick={() => {
+            const artStyle = form.getValues("artStyle");
+            if (artStyle && previewData && previewData.entities && previewData.entities.filter(e => e.type === 'character').length > 0) {
+              generateCharacterImages(artStyle);
+            } else {
+              setStep(6); // Skip character review if no characters
+            }
+          }}
+          disabled={isGeneratingCharacters}
           className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl"
         >
-          Next: Generate Book
+          {isGeneratingCharacters ? "Generating Characters..." : "Generate Characters"}
           <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </div>
     </div>
   );
   
-  // Step 5: Final story generation
-  const renderStep5 = () => (
+  // Step 5: Character Review and Approval
+  const renderStep5 = () => {
+    const characters = previewData?.entities?.filter(entity => entity.type === 'character') || [];
+    
+    return (
+      <div className="mb-10">
+        <h3 className="text-2xl font-bold mb-6">Review Your Characters</h3>
+        
+        <p className="text-gray-600 mb-6">
+          Review the character designs below. These portraits will be used as references to maintain 
+          consistent character appearance throughout your story. You can approve or regenerate any character.
+        </p>
+        
+        {characters.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {characters.map(character => (
+              <div key={character.id} className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
+                  {characterImages[character.id] ? (
+                    <img 
+                      src={characterImages[character.id]} 
+                      alt={character.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">👤</div>
+                        <p className="text-sm">Loading...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <h4 className="font-bold text-lg mb-2">{character.name}</h4>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-3">{character.description}</p>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`approve-${character.id}`}
+                      checked={approvedCharacters[character.id] || false}
+                      onChange={(e) => {
+                        setApprovedCharacters(prev => ({
+                          ...prev,
+                          [character.id]: e.target.checked
+                        }));
+                      }}
+                      className="w-4 h-4 text-[#FF6B6B] border-gray-300 rounded focus:ring-[#FF6B6B]"
+                    />
+                    <label htmlFor={`approve-${character.id}`} className="text-sm font-medium">
+                      Approved
+                    </label>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const artStyle = form.getValues("artStyle");
+                      // Regenerate single character
+                      // For now, we'll keep it simple and regenerate all
+                      generateCharacterImages(artStyle);
+                    }}
+                    className="text-xs"
+                  >
+                    Regenerate
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl p-6 text-center mb-6">
+            <p className="text-gray-600">
+              No characters were identified in your story. The story will be generated with scenes only.
+            </p>
+          </div>
+        )}
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            variant="outline"
+            onClick={prevStep}
+            className="border-2 border-gray-300 text-gray-600 font-bold py-3 px-8 rounded-xl hover:bg-gray-100"
+          >
+            <ArrowLeft className="mr-2 h-5 w-5" />
+            Back to Art Style
+          </Button>
+          
+          <Button 
+            onClick={nextStep}
+            disabled={characters.length > 0 && Object.values(approvedCharacters).every(approved => !approved)}
+            className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50"
+          >
+            Generate Final Story
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+  
+  // Step 6: Final story generation
+  const renderStep6 = () => (
     <div className="mb-10">
       <h3 className="text-2xl font-bold mb-6">Generate Your Story</h3>
       
@@ -1013,6 +1125,7 @@ export default function CreateStory() {
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
             {step === 5 && renderStep5()}
+            {step === 6 && renderStep6()}
           </CardContent>
         </Card>
       </div>
