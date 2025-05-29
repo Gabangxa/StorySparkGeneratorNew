@@ -943,7 +943,7 @@ export default function CreateStory() {
                 <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
                   {characterImages[character.id] ? (
                     <img 
-                      src={characterImages[character.id]} 
+                      src={`/api/image-proxy?url=${encodeURIComponent(characterImages[character.id])}`} 
                       alt={character.name}
                       className="w-full h-full object-cover"
                     />
