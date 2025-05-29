@@ -7,6 +7,10 @@ import { v4 as uuidv4 } from 'uuid';
 const openaiText = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const openaiImage = new OpenAI({ apiKey: process.env.DALL_E });
 
+// Log API key status (without exposing the actual keys)
+console.log('Text API key configured:', !!process.env.OPENAI_API_KEY);
+console.log('Image API key configured:', !!process.env.DALL_E);
+
 // Types for story generation
 export type GenerateStoryRequest = {
   title: string;

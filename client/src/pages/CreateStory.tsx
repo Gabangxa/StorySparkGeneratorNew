@@ -130,6 +130,7 @@ export default function CreateStory() {
           character,
           artStyle
         });
+        console.log(`Character ${character.id} image response:`, response);
         return { characterId: character.id, imageUrl: response.url };
       });
       
