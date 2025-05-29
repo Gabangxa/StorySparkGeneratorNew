@@ -66,14 +66,17 @@ export async function generateStory({
       ]
     }
     
-    Characters MUST have visual consistency throughout the book. For characters, always include:
-    - Exact hair color, style, and length
-    - Specific eye color and shape
-    - Skin tone description
-    - Detailed clothing description with colors
-    - Age, height, and body type
-    - Any distinctive features (glasses, hats, accessories, etc.)
-    - Facial features (round face, pointed chin, freckles, etc.)
+    Characters MUST have visual consistency throughout the book. For characters, create a CHARACTER DESIGN CARD format:
+    
+    CHARACTER NAME: [name]
+    SPECIES/TYPE: [human/animal/robot etc.]
+    PRIMARY COLOR SCHEME: [3 main colors max - be very specific like "bright red", "golden yellow", "deep blue"]
+    KEY VISUAL MARKERS: [3-4 most distinctive features that make this character instantly recognizable]
+    BODY SHAPE: [specific proportions - "round and short", "tall and thin", "medium build"]
+    FACE FEATURES: [most distinctive facial characteristics]
+    SIGNATURE CLOTHING/ACCESSORIES: [1-2 key items that character always wears]
+    
+    Make these descriptions short but extremely specific. Focus on features that would make the character instantly recognizable even in silhouette.
     
     For locations, provide highly detailed descriptions including:
     - Architectural style
@@ -227,13 +230,90 @@ interface GenerateImageResult {
 }
 
 /**
- * Generate an illustration for a story page with enhanced character/entity consistency
+ * Generate character reference images first to establish visual consistency
+ * This creates individual character portraits that can be referenced in story scenes
+ */
+async function generateCharacterReference(character: StoryEntity, artStyle: string): Promise<string> {
+  const characterPrompt = `
+Create a character reference sheet for a children's book character in ${artStyle} style.
+
+CHARACTER: ${character.name}
+DESCRIPTION: ${character.description}
+
+Show the character in a neutral pose, front-facing view, with clear visibility of all distinguishing features.
+Clean white background. Focus on establishing the character's definitive appearance for use in multiple scenes.
+Child-friendly, bright colors.
+  `.trim();
+
+  console.log(`Generating character reference for ${character.name}`);
+
+  const response = await openaiImage.images.generate({
+    model: "dall-e-3",
+    prompt: characterPrompt,
+    n: 1,
+    size: "1024x1024",
+    quality: "standard",
+    style: "vivid",
+  });
+
+  if (!response.data[0].url) {
+    throw new Error(`No image URL returned for character ${character.name}`);
+  }
+
+  return response.data[0].url;
+}
+
+/**
+ * Generate scene images that reference character designs for consistency
+ * This creates story illustrations while maintaining character appearance
+ */
+async function generateSceneWithCharacterReferences(
+  scenePrompt: string, 
+  characters: StoryEntity[], 
+  characterImageUrls: Record<string, string>,
+  artStyle: string
+): Promise<string> {
+  // Build character reference descriptions based on the reference images
+  const characterRefs = characters
+    .filter(char => characterImageUrls[char.id])
+    .map(char => `${char.name}: matches the character shown in reference image`)
+    .join(', ');
+
+  const enhancedPrompt = `
+Create a children's book illustration in ${artStyle} style.
+
+SCENE: ${scenePrompt}
+
+CHARACTERS: ${characterRefs}
+The characters must look EXACTLY like their reference images. Maintain all visual details including clothing, colors, proportions, and distinctive features.
+
+STYLE: Bright colors, child-friendly illustrations.
+  `.trim();
+
+  console.log(`Generating scene with character references: ${characters.map(c => c.name).join(', ')}`);
+
+  const response = await openaiImage.images.generate({
+    model: "dall-e-3",
+    prompt: enhancedPrompt,
+    n: 1,
+    size: "1024x1024",
+    quality: "standard",
+    style: "vivid",
+  });
+
+  if (!response.data[0].url) {
+    throw new Error("No image URL returned for scene");
+  }
+
+  return response.data[0].url;
+}
+
+/**
+ * Enhanced image generation with character consistency system
  * 
- * This function takes either a simple prompt string or a complex options object
- * and generates a children's book illustration using DALL-E 3.
- * 
- * When provided with entity information, it enhances the prompt to maintain
- * visual consistency of characters, locations, and objects across illustrations.
+ * This function implements a two-phase approach:
+ * 1. Generate character references if not already created
+ * 2. Generate scene images that reference the character designs
  * 
  * @param prompt - Simple string prompt or GenerateImageOptions object
  * @returns Either a direct image URL string or a GenerateImageResult object with metadata
@@ -339,75 +419,65 @@ export async function generateImage(
       ? finalPrompt.substring(0, availableLength - 3) + "..." 
       : finalPrompt;
       
-    // Variable to hold our final prompt content with consistency directives
+    // Enhanced character consistency system
     let wrappedPrompt = "";
     
-    // Check if we have any character reference URLs to mention
-    const hasCharacterReferences = Object.keys(characterReferenceURLs).length > 0;
+    // Extract character entities for enhanced consistency prompting
+    const characterEntities = entities.filter(e => e.type === 'character');
     
-    // Create different prompt templates based on whether this is the first page or not
+    // Create structured character design specifications
+    let characterConsistencyBlock = "";
+    if (characterEntities.length > 0) {
+      characterConsistencyBlock = "\n\nCHARACTER DESIGN SPECIFICATIONS:\n";
+      characterEntities.forEach(char => {
+        const desc = char.description.toLowerCase();
+        
+        // Extract primary colors
+        const colors = desc.match(/\b(red|blue|green|yellow|orange|purple|pink|brown|black|white|gray|silver|gold|rainbow|metallic)\b/g) || [];
+        const primaryColors = colors.slice(0, 3).join(', ') || 'vibrant colors';
+        
+        // Extract key shape descriptors
+        const shapes = desc.match(/\b(round|square|tall|short|thin|thick|small|large|compact|sleek|curved|angular)\b/g) || [];
+        const bodyShape = shapes.slice(0, 2).join(', ') || 'distinctive shape';
+        
+        // Extract material/texture info
+        let material = 'standard';
+        if (desc.includes('metal') || desc.includes('robot') || desc.includes('droid')) material = 'metallic/robotic';
+        if (desc.includes('fur') || desc.includes('furry')) material = 'furry';
+        if (desc.includes('feather')) material = 'feathered';
+        
+        characterConsistencyBlock += `${char.name}: ${primaryColors} | ${bodyShape} | ${material}\n`;
+      });
+      characterConsistencyBlock += "\nMAINTAIN EXACT APPEARANCE: Colors, shapes, and materials must be identical in every scene.\n";
+    }
+    
+    // Create the main prompt based on page type
     if (isFirstPage) {
-      // Very concise first page prompt
       wrappedPrompt = `
 Create a children's book illustration in ${formattedArtStyle} style.
 
-FIRST PAGE: Character designs will be referenced for consistency in future pages.
+IMPORTANT: This is the FIRST page - establish definitive character designs that will be maintained throughout the story.
 
 SCENE:
-${trimmedFinalPrompt}
+${trimmedFinalPrompt}${characterConsistencyBlock}
 
-STYLE: Bright colors, child-friendly.
-`;
-    } else if (hasCharacterReferences) {
-      // For subsequent pages with character references, emphasize matching previous appearances
-      
-      // Get the character entities that have appeared before 
-      const characterReferencesWithEntities = Object.entries(characterReferenceURLs)
-        .map(([entityId, url]) => {
-          const entity = entities.find(e => e.id === entityId);
-          return entity ? { entity, url } : null;
-        })
-        .filter(Boolean) as Array<{ entity: StoryEntity, url: string }>;
-      
-      // Build a list of characters to maintain consistency with
-      const characterReferenceList = characterReferencesWithEntities
-        .map(({ entity }) => `- ${entity.name}`)
-        .join('\n');
-      
-      // Extract the most important visual attributes for each character
-      const characterAttributes = characterReferencesWithEntities
-        .map(({ entity }) => {
-          const attributes = extractVisualAttributes(entity.description).slice(0, 2);
-          return attributes.length > 0 
-            ? `${entity.name}: ${attributes.join(', ')}`
-            : null;
-        })
-        .filter(Boolean)
-        .join('\n');
-      
-      // Limit character reference details to prevent token limit issues
-      const limitedCharacterList = characterReferenceList.split('\n').slice(0, 3).join('\n');
-      
-      // Use a more concise prompt format
-      wrappedPrompt = `
-Create a children's book illustration in ${formattedArtStyle} style.
-
-CONSISTENCY: Characters (${characterReferencesWithEntities.map(({entity}) => entity.name).join(', ')}) must look identical to prior pages.
-
-SCENE:
-${trimmedFinalPrompt}
-
-STYLE: Bright colors, child-friendly illustrations.
+STYLE: Bright colors, child-friendly illustrations with clear, distinctive character features.
 `;
     } else {
-      // Very concise standard prompt
+      // For subsequent pages, use stronger consistency language
+      const characterNames = characterEntities.map(e => e.name).join(', ');
+      
       wrappedPrompt = `
 Create a children's book illustration in ${formattedArtStyle} style.
 
-SCENE:
-${trimmedFinalPrompt}
+CRITICAL: Characters (${characterNames}) must appear EXACTLY as established in previous illustrations.
 
-STYLE: Bright colors, child-friendly.
+SCENE:
+${trimmedFinalPrompt}${characterConsistencyBlock}
+
+CONSISTENCY RULE: Every visual detail of each character must match their previous appearances precisely.
+
+STYLE: Bright colors, child-friendly illustrations.
 `;
     }
 
