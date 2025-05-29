@@ -423,7 +423,7 @@ export async function generateImage(
     let wrappedPrompt = "";
     
     // Extract character entities for enhanced consistency prompting
-    const characterEntities = entities.filter(e => e.type === 'character');
+    const characterEntities = entities ? entities.filter(e => e.type === 'character') : [];
     
     // Create structured character design specifications
     let characterConsistencyBlock = "";

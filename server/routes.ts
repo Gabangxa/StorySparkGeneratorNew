@@ -523,6 +523,8 @@ Child-friendly, bright colors with crisp details.
       const response = await generateImage(characterPrompt);
       const imageUrl = typeof response === 'string' ? response : response.url;
       
+      console.log(`Generated character image for ${character.name}:`, imageUrl);
+      
       return res.json({ url: imageUrl });
       
     } catch (error) {

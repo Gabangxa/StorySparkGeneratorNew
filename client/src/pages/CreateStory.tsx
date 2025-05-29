@@ -978,11 +978,16 @@ export default function CreateStory() {
               <div key={character.id} className="bg-white border-2 border-gray-200 rounded-xl p-4">
                 <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
                   {characterImages[character.id] ? (
-                    <img 
-                      src={`/api/image-proxy?url=${encodeURIComponent(characterImages[character.id])}`} 
-                      alt={character.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="w-full h-full">
+                      <button
+                        onClick={() => window.open(characterImages[character.id], '_blank')}
+                        className="w-full h-full bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg hover:bg-blue-100 transition-colors flex flex-col items-center justify-center text-blue-600"
+                      >
+                        <div className="text-4xl mb-2">🖼️</div>
+                        <p className="text-sm font-medium">Click to View</p>
+                        <p className="text-xs">{character.name}</p>
+                      </button>
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
                       <div className="text-center">
