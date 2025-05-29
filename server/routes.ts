@@ -459,6 +459,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   /**
+   * Generate individual character reference images
+   * Creates standalone character portraits for approval before scene generation
+   */
+  app.post("/api/generate-character-image", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        character: z.object({
+          id: z.string(),
+          name: z.string(),
+          type: z.literal('character'),
+          description: z.string(),
+        }),
+        artStyle: z.string()
+      });
+      
+      const parsedBody = schema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ 
+          message: "Invalid character data",
+          errors: parsedBody.error.errors
+        });
+      }
+      
+      const { character, artStyle } = parsedBody.data;
+      
+      // Generate character reference image
+      const characterPrompt = `
+Create a character reference portrait for a children's book in ${artStyle} style.
+
+CHARACTER: ${character.name}
+DESCRIPTION: ${character.description}
+
+Show the character in a neutral standing pose, front-facing view, full body visible.
+Clean white background. Focus on establishing clear, distinctive character features.
+Child-friendly, bright colors with crisp details.
+      `.trim();
+
+      console.log(`Generating character reference for ${character.name}`);
+
+      const response = await generateImage(characterPrompt);
+      const imageUrl = typeof response === 'string' ? response : response.url;
+      
+      return res.json({ url: imageUrl });
+      
+    } catch (error) {
+      console.error("Error generating character image:", error);
+      return res.status(500).json({ 
+        message: "Failed to generate character image", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  /**
    * Image proxy for PDF rendering
    * Fetches images from external URLs and serves them locally
    * This helps with CORS issues when generating PDFs

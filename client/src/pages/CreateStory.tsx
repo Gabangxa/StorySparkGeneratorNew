@@ -31,13 +31,16 @@ import ArtStyleCard from "@/components/ArtStyleCard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function CreateStory() {
   const [step, setStep] = useState<Step>(1);
   const [storyText, setStoryText] = useState<Array<{ text: string; pageNumber: number }>>([]);
   const [characterDescriptions, setCharacterDescriptions] = useState<Record<string, string>>({});
   const [useAICharacters, setUseAICharacters] = useState(true);
+  const [characterImages, setCharacterImages] = useState<Record<string, string>>({});
+  const [approvedCharacters, setApprovedCharacters] = useState<Record<string, boolean>>({});
+  const [generatingCharacters, setGeneratingCharacters] = useState(false);
   const [previewData, setPreviewData] = useState<{
     pages: Array<{ text: string; imagePrompt: string; entities: string[] }>;
     entities: StoryEntityWithAppearances[];
@@ -112,6 +115,47 @@ export default function CreateStory() {
         title: "Failed to generate story",
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
+      });
+    }
+  });
+
+  // Mutation to generate character images for review
+  const { mutate: generateCharacterImages, isPending: isGeneratingCharacters } = useMutation({
+    mutationFn: async (artStyle: string) => {
+      if (!previewData?.entities) throw new Error('No entities available');
+      
+      const characters = previewData.entities.filter(entity => entity.type === 'character');
+      const characterImagePromises = characters.map(async (character) => {
+        const response = await apiRequest("POST", "/api/generate-character-image", {
+          character,
+          artStyle
+        });
+        return { characterId: character.id, imageUrl: response.url };
+      });
+      
+      const results = await Promise.all(characterImagePromises);
+      const imageMap: Record<string, string> = {};
+      results.forEach(({ characterId, imageUrl }) => {
+        imageMap[characterId] = imageUrl;
+      });
+      
+      return imageMap;
+    },
+    onSuccess: (images) => {
+      setCharacterImages(images);
+      // Initially approve all characters
+      const approvals: Record<string, boolean> = {};
+      Object.keys(images).forEach(id => approvals[id] = true);
+      setApprovedCharacters(approvals);
+      // Move to character review step
+      setStep(4);
+    },
+    onError: (error) => {
+      console.error('Error generating character images:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate character images. Please try again.",
+        variant: "destructive"
       });
     }
   });
@@ -233,11 +277,18 @@ export default function CreateStory() {
         <span className={step === 4 ? "font-bold" : ""}>Art Style</span>
       </div>
       
-      <div className="flex items-center mb-4 md:mb-0">
-        <div className={`${step === 5 ? "bg-[#FF6B6B]" : "bg-gray-200"} ${step === 5 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
-          5
+      <div className="flex items-center mb-4 md:mb-0 mr-6">
+        <div className={`${step === 5 ? "bg-[#FF6B6B]" : step > 5 ? "bg-gray-300" : "bg-gray-200"} ${step === 5 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
+          {step > 5 ? "✓" : "5"}
         </div>
-        <span className={step === 5 ? "font-bold" : ""}>Generate</span>
+        <span className={step === 5 ? "font-bold" : ""}>Review Characters</span>
+      </div>
+      
+      <div className="flex items-center mb-4 md:mb-0">
+        <div className={`${step === 6 ? "bg-[#FF6B6B]" : "bg-gray-200"} ${step === 6 ? "text-white" : "text-dark"} rounded-full w-8 h-8 flex items-center justify-center mr-2`}>
+          6
+        </div>
+        <span className={step === 6 ? "font-bold" : ""}>Generate Story</span>
       </div>
     </div>
   );
