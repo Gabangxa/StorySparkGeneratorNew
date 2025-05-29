@@ -142,6 +142,7 @@ export default function CreateStory() {
       return imageMap;
     },
     onSuccess: (images) => {
+      console.log('Generated character images:', images);
       setCharacterImages(images);
       // Initially approve all characters
       const approvals: Record<string, boolean> = {};
@@ -183,6 +184,41 @@ export default function CreateStory() {
     }
   });
   
+  // Mutation for generating the complete final story with images
+  const { mutate: generateFinalStory, isPending: isGeneratingFinal } = useMutation({
+    mutationFn: async (data: StoryFormData) => {
+      // Include approved character images in the request
+      const approvedCharacterUrls: Record<string, string> = {};
+      Object.entries(approvedCharacters).forEach(([characterId, isApproved]) => {
+        if (isApproved && characterImages[characterId]) {
+          approvedCharacterUrls[characterId] = characterImages[characterId];
+        }
+      });
+
+      const response = await apiRequest("POST", "/api/stories", {
+        ...data,
+        pages: storyText,
+        characterImages: approvedCharacterUrls
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Story created successfully!",
+        description: "Your illustrated storybook is ready.",
+      });
+      // Navigate to the new story
+      navigate(`/story/${data.id}`);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create story",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Original preview mutation - we'll use this later for image generation
   const { mutate: previewStory, isPending: isPreviewLoading } = useMutation({
     mutationFn: async (data: StoryFormData) => {
@@ -1015,11 +1051,11 @@ export default function CreateStory() {
           </Button>
           
           <Button 
-            onClick={nextStep}
-            disabled={characters.length > 0 && Object.values(approvedCharacters).every(approved => !approved)}
+            onClick={() => generateFinalStory(form.getValues())}
+            disabled={characters.length > 0 && Object.values(approvedCharacters).every(approved => !approved) || isGeneratingFinal}
             className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50"
           >
-            Generate Final Story
+            {isGeneratingFinal ? 'Creating Story...' : 'Generate Final Story'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

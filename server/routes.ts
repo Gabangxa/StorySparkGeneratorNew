@@ -36,7 +36,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/stories", async (req: Request, res: Response) => {
     try {
-      const parsedBody = storyFormSchema.safeParse(req.body);
+      // Parse the form data and additional character images
+      const { pages, characterImages, ...formData } = req.body;
+      const parsedBody = storyFormSchema.safeParse(formData);
       
       if (!parsedBody.success) {
         return res.status(400).json({ 
@@ -47,17 +49,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { title, description, storyType, ageRange, artStyle, layoutType } = parsedBody.data;
 
-      // Generate story with OpenAI
-      const generatedStory = await generateStory({
-        title,
-        description,
-        storyType,
-        ageRange,
-        numberOfPages: 5 // Fixed number of pages for now
-      });
+      // Use existing story text and entities if provided, otherwise generate new story
+      let generatedStory;
+      let entities;
+      
+      if (pages && pages.length > 0) {
+        // Use the pre-generated story text from the workflow
+        generatedStory = { pages };
+        // Re-generate entity data for image generation
+        const storyResponse = await generateStory({
+          title,
+          description,
+          storyType,
+          ageRange,
+          numberOfPages: pages.length
+        });
+        entities = storyResponse.entities || [];
+      } else {
+        // Generate new story
+        generatedStory = await generateStory({
+          title,
+          description,
+          storyType,
+          ageRange,
+          numberOfPages: 5
+        });
+        entities = generatedStory.entities || [];
+      }
 
-      // Extract entities for tracking
-      const entities = generatedStory.entities || [];
       const entityGenerationIds: Record<string, string> = {};
       
       /**
