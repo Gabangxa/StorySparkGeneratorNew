@@ -210,7 +210,7 @@ export default function CreateStory() {
         description: "Your illustrated storybook is ready.",
       });
       // Navigate to the new story
-      navigate(`/story/${data.id}`);
+      navigate(`/stories/${data.id}`);
     },
     onError: (error) => {
       toast({
