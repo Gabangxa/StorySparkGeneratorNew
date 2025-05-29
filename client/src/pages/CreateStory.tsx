@@ -130,8 +130,9 @@ export default function CreateStory() {
           character,
           artStyle
         });
-        console.log(`Character ${character.id} image response:`, response);
-        return { characterId: character.id, imageUrl: response.url };
+        const jsonData = await response.json();
+        console.log(`Character ${character.id} image response:`, jsonData);
+        return { characterId: character.id, imageUrl: jsonData.url };
       });
       
       const results = await Promise.all(characterImagePromises);
@@ -1026,13 +1027,12 @@ export default function CreateStory() {
                     size="sm"
                     onClick={() => {
                       const artStyle = form.getValues("artStyle");
-                      // Regenerate single character
-                      // For now, we'll keep it simple and regenerate all
                       generateCharacterImages(artStyle);
                     }}
+                    disabled={isGeneratingCharacters}
                     className="text-xs"
                   >
-                    Regenerate
+                    {isGeneratingCharacters ? 'Generating...' : 'Regenerate'}
                   </Button>
                 </div>
               </div>
