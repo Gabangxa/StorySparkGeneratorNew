@@ -55,8 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (storyPages && storyPages.length > 0) {
         // Use the pre-generated story text from the workflow
-        generatedStory = { pages: storyPages };
-        // Re-generate entity data for image generation
+        // Re-generate entity data for image generation to ensure we have consistent character info
         const storyResponse = await generateStory({
           title,
           description,
@@ -64,6 +63,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ageRange,
           numberOfPages: storyPages.length
         });
+        
+        // Combine the pre-written pages with fresh entity data
+        generatedStory = {
+          pages: storyPages.map((page, index) => ({
+            text: page.text,
+            imagePrompt: storyResponse.pages[index]?.imagePrompt || `Create an illustration for: ${page.text.substring(0, 100)}...`,
+            entities: storyResponse.pages[index]?.entities || []
+          })),
+          entities: storyResponse.entities || []
+        };
         entities = storyResponse.entities || [];
       } else {
         // Generate new story
