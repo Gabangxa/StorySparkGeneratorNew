@@ -37,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/stories", async (req: Request, res: Response) => {
     try {
       // Parse the form data and additional character images
-      const { pages, characterImages, ...formData } = req.body;
+      const { pages: storyPages, characterImages, ...formData } = req.body;
       const parsedBody = storyFormSchema.safeParse(formData);
       
       if (!parsedBody.success) {
@@ -53,16 +53,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let generatedStory;
       let entities;
       
-      if (pages && pages.length > 0) {
+      if (storyPages && storyPages.length > 0) {
         // Use the pre-generated story text from the workflow
-        generatedStory = { pages };
+        generatedStory = { pages: storyPages };
         // Re-generate entity data for image generation
         const storyResponse = await generateStory({
           title,
           description,
           storyType,
           ageRange,
-          numberOfPages: pages.length
+          numberOfPages: storyPages.length
         });
         entities = storyResponse.entities || [];
       } else {
@@ -133,9 +133,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // These are the images that we'll reuse for visual consistency
       const characterReferenceImages: Record<string, any> = {};
       
+      // Use pre-generated character images if available
+      const preGeneratedCharacterImages = characterImages || {};
+      
       // Generate illustrations for each page, processing sequentially to maintain consistency
       // This ensures that character appearances from early pages inform later ones
-      const pages: StoryPage[] = [];
+      const storyPagesWithImages: StoryPage[] = [];
       
       for (let index = 0; index < generatedStory.pages.length; index++) {
         const page = generatedStory.pages[index];
@@ -232,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Add the completed page to our results
-        pages.push({
+        storyPagesWithImages.push({
           pageNumber: index + 1,
           text: page.text,
           imageUrl,
@@ -258,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ageRange,
         artStyle,
         layoutType,
-        pages,
+        pages: storyPagesWithImages,
         entities: storyEntities
       });
 
