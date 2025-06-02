@@ -39,8 +39,8 @@ export default function Home() {
             <div className="md:w-1/2 flex justify-center">
               <div className="relative w-full max-w-md transform transition-transform duration-500 hover:rotate-[-3deg] hover:shadow-xl">
                 <img 
-                  src="https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&w=600"
-                  alt="Open storybook with colorful illustrations" 
+                  src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=600"
+                  alt="Open children's storybook with colorful illustrations" 
                   className="rounded-xl shadow-xl z-10 relative"
                 />
                 <div className="absolute -top-4 -right-4 bg-[#FFE66D] p-3 rounded-full shadow-lg z-20 transform rotate-12">
