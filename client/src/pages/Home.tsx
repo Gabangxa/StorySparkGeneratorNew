@@ -215,20 +215,20 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                title: "Luna the Light Keeper",
-                description: "A young girl discovers she can create and control light, helping her village during the darkest night of the year.",
+                title: "Sparkle and the Rainbow Bridge",
+                description: "A young unicorn discovers she can create magical bridges to help forest creatures reach their dreams.",
                 type: "Adventure",
                 image: "https://images.unsplash.com/photo-1530325553241-4f6e7690cf36"
               },
               {
-                title: "The Sharing Tree",
-                description: "A magical tree in the forest teaches children the joy of sharing and how kindness grows when spread to others.",
+                title: "The Kindness Garden",
+                description: "A magical garden grows bigger every time someone does a kind deed, teaching children about compassion.",
                 type: "Moral Lesson",
                 image: "https://images.unsplash.com/photo-1560830889-7b9c0f3a3f0a"
               },
               {
-                title: "Wigglebot's Silly Day",
-                description: "A robot with wobbly legs has hilarious adventures as it tries to learn how to dance for the robot talent show.",
+                title: "Captain Giggles' Space Adventure",
+                description: "A cheerful astronaut and their alien friends have silly mishaps while exploring colorful planets.",
                 type: "Fun Story",
                 image: "https://images.unsplash.com/photo-1557672172-298e090bd0f1"
               }
