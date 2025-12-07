@@ -70,7 +70,7 @@ export const insertStorySchema = createInsertSchema(stories).omit({
 // Schema for story creation form
 export const storyFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title is too long"),
-  description: z.string().min(10, "Description is too short").max(1000, "Description is too long"),
+  description: z.string().min(10, "Description is too short").max(5000, "Description is too long"),
   storyType: z.enum(STORY_TYPES, {
     errorMap: () => ({ message: "Please select a story type" }),
   }),
