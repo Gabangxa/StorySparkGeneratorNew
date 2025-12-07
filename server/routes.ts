@@ -558,6 +558,12 @@ Child-friendly, bright colors with crisp details.
         return res.status(400).json({ message: "URL parameter is required" });
       }
       
+      // Check if this is a local generated image URL
+      if (url.startsWith('/generated-images/')) {
+        // For local images, redirect to the static file path
+        return res.redirect(url);
+      }
+      
       // Validate that this is from an expected domain to prevent abuse
       const validDomains = [
         "oaidalleapiprodscus.blob.core.windows.net",
@@ -566,9 +572,10 @@ Child-friendly, bright colors with crisp details.
         "dalle-image-prod.azureedge.net"
       ];
       
-      // Also allow any OpenAI-related domains
+      // Also allow any OpenAI-related domains or Google domains for Gemini
       const isOpenAIDomain = url.includes('openai') || url.includes('dalle');
-      const isValidUrl = validDomains.some(domain => url.includes(domain)) || isOpenAIDomain;
+      const isGoogleDomain = url.includes('google') || url.includes('googleapis');
+      const isValidUrl = validDomains.some(domain => url.includes(domain)) || isOpenAIDomain || isGoogleDomain;
       
       if (!isValidUrl) {
         console.log(`Rejecting URL: ${url}`);
