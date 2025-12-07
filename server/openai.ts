@@ -227,11 +227,20 @@ export async function generateStory({
  */
 interface GenerateImageOptions {
   prompt: string;                                  // Base prompt describing the image to be generated
-  entityReferenceIds?: { [key: string]: string };  // Map of entity IDs to DALL-E generation IDs for consistency
+  entityReferenceIds?: { [key: string]: string };  // Map of entity IDs to generation IDs for consistency
   artStyle?: string;                               // Artistic style for the illustration (anime, watercolor, etc.)
   entities?: StoryEntity[];                        // Story entities to highlight in the prompt for consistency
   characterReferenceURLs?: { [key: string]: string };  // URLs of previous character images to reference
+  characterReferencePaths?: string[];              // Filesystem paths to character reference images for Gemini
   isFirstPage?: boolean;                           // Whether this is the first page of the story
+}
+
+/**
+ * Options for Gemini image generation with optional reference images
+ */
+interface GeminiImageOptions {
+  prompt: string;
+  referenceImagePaths?: string[];  // Local filesystem paths to reference images
 }
 
 /**
@@ -246,16 +255,63 @@ interface GenerateImageResult {
 }
 
 /**
+ * Convert a local image URL path to an absolute filesystem path
+ */
+function urlToFilesystemPath(imageUrl: string): string {
+  // Convert URLs like "/generated-images/abc.png" to absolute paths
+  if (imageUrl.startsWith('/generated-images/')) {
+    return path.join(GENERATED_IMAGES_DIR, imageUrl.replace('/generated-images/', ''));
+  }
+  return imageUrl;
+}
+
+/**
  * Generate an image using Google Gemini (Nano Banana model) and save to filesystem
+ * Supports passing reference images for character consistency
  * Returns a URL path that can be served by the server
  */
-async function generateGeminiImage(prompt: string): Promise<string> {
+async function generateGeminiImage(options: string | GeminiImageOptions): Promise<string> {
   try {
+    // Normalize options
+    const prompt = typeof options === 'string' ? options : options.prompt;
+    const referenceImagePaths = typeof options === 'string' ? [] : (options.referenceImagePaths || []);
+    
     console.log("Generating image with Gemini (Nano Banana):", prompt.substring(0, 100) + "...");
+    if (referenceImagePaths.length > 0) {
+      console.log(`Using ${referenceImagePaths.length} reference image(s) for consistency`);
+    }
+    
+    // Build the contents array - reference images come FIRST, then the text prompt
+    const contents: any[] = [];
+    
+    // Add reference images as inlineData (images must come before text for best results)
+    for (const imagePath of referenceImagePaths) {
+      try {
+        const absolutePath = urlToFilesystemPath(imagePath);
+        if (fs.existsSync(absolutePath)) {
+          const imageBuffer = fs.readFileSync(absolutePath);
+          const base64Data = imageBuffer.toString('base64');
+          contents.push({
+            inlineData: {
+              mimeType: 'image/png',
+              data: base64Data
+            }
+          });
+          console.log(`Added reference image: ${imagePath}`);
+        } else {
+          console.warn(`Reference image not found: ${absolutePath}`);
+        }
+      } catch (err) {
+        console.warn(`Failed to read reference image ${imagePath}:`, err);
+      }
+    }
+    
+    // Add the text prompt after the images
+    contents.push(prompt);
     
     const response = await geminiAI.models.generateContent({
       model: "gemini-2.5-flash-image",
-      contents: prompt,
+      contents: contents,
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
       },
@@ -320,6 +376,7 @@ Child-friendly, bright colors.
 /**
  * Generate scene images that reference character designs for consistency
  * This creates story illustrations while maintaining character appearance
+ * Now passes actual character images to Gemini for visual reference
  */
 async function generateSceneWithCharacterReferences(
   scenePrompt: string, 
@@ -330,10 +387,20 @@ async function generateSceneWithCharacterReferences(
   // Build character reference descriptions based on the reference images
   const characterRefs = characters
     .filter(char => characterImageUrls[char.id])
-    .map(char => `${char.name}: matches the character shown in reference image`)
+    .map(char => `${char.name}: matches the character shown in the reference image above`)
     .join(', ');
 
+  // Collect reference image paths for characters in this scene
+  const referenceImagePaths: string[] = [];
+  for (const char of characters) {
+    if (characterImageUrls[char.id]) {
+      referenceImagePaths.push(characterImageUrls[char.id]);
+    }
+  }
+
   const enhancedPrompt = `
+Use the reference image(s) above as strict visual references for the characters.
+
 Create a children's book illustration in ${artStyle} style.
 
 SCENE: ${scenePrompt}
@@ -345,8 +412,13 @@ STYLE: Bright colors, child-friendly illustrations.
   `.trim();
 
   console.log(`Generating scene with character references: ${characters.map(c => c.name).join(', ')}`);
+  console.log(`Reference images: ${referenceImagePaths.join(', ')}`);
 
-  return await generateGeminiImage(enhancedPrompt);
+  // Pass the reference images along with the prompt
+  return await generateGeminiImage({
+    prompt: enhancedPrompt,
+    referenceImagePaths: referenceImagePaths
+  });
 }
 
 /**
@@ -377,6 +449,9 @@ export async function generateImage(
     let characterReferenceURLs: { [key: string]: string } = {};
     let isFirstPage: boolean = false;
     
+    // Character reference image paths for Gemini multimodal input
+    let characterReferencePaths: string[] = [];
+    
     // Handle both simple string prompts and complex options
     if (typeof prompt === 'string') {
       // Simple case: just a string prompt
@@ -389,6 +464,7 @@ export async function generateImage(
       artStyle = options.artStyle || 'colorful';
       entities = options.entities || [];
       characterReferenceURLs = options.characterReferenceURLs || {};
+      characterReferencePaths = options.characterReferencePaths || [];
       isFirstPage = options.isFirstPage || false;
     }
 
@@ -522,11 +598,29 @@ STYLE: Bright colors, child-friendly illustrations.
 `;
     }
 
+    // Collect reference image paths from characterReferenceURLs if not already provided
+    if (characterReferencePaths.length === 0 && Object.keys(characterReferenceURLs).length > 0) {
+      characterReferencePaths = Object.values(characterReferenceURLs).slice(0, 3); // Limit to 3 for API efficiency
+    }
+    
+    // If we have reference images, update the prompt to mention them
+    if (characterReferencePaths.length > 0) {
+      wrappedPrompt = `Use the reference image(s) above as strict visual references for the characters.
+
+${wrappedPrompt}`;
+    }
+    
     // Log the prompt for debugging purposes
     console.log("Generating image with prompt:", wrappedPrompt);
+    if (characterReferencePaths.length > 0) {
+      console.log(`Using ${characterReferencePaths.length} character reference image(s)`);
+    }
     
-    // Call Gemini (Nano Banana) to generate the image
-    const imageUrl = await generateGeminiImage(wrappedPrompt);
+    // Call Gemini (Nano Banana) to generate the image with reference images
+    const imageUrl = await generateGeminiImage({
+      prompt: wrappedPrompt,
+      referenceImagePaths: characterReferencePaths
+    });
     
     // For simple string prompts, just return the URL
     if (typeof prompt === 'string') {
