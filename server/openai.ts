@@ -254,8 +254,8 @@ async function generateGeminiImage(prompt: string): Promise<string> {
     console.log("Generating image with Gemini (Nano Banana):", prompt.substring(0, 100) + "...");
     
     const response = await geminiAI.models.generateContent({
-      model: "gemini-2.5-flash-preview-image-generation",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      model: "gemini-2.5-flash-image",
+      contents: prompt,
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
       },
