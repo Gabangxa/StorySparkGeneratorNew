@@ -1,15 +1,26 @@
 import OpenAI from "openai";
+import { GoogleGenAI, Modality } from "@google/genai";
 import { StoryEntity } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from "fs";
+import * as path from "path";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-// Separate OpenAI clients for different services
+// OpenAI client for text generation
 const openaiText = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const openaiImage = new OpenAI({ apiKey: process.env.DALL_E });
+
+// Google Gemini client for image generation (Nano Banana model)
+const geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 // Log API key status (without exposing the actual keys)
 console.log('Text API key configured:', !!process.env.OPENAI_API_KEY);
-console.log('Image API key configured:', !!process.env.DALL_E);
+console.log('Gemini Image API key configured:', !!process.env.GEMINI_API_KEY);
+
+// Ensure generated images directory exists
+const GENERATED_IMAGES_DIR = path.join(process.cwd(), 'public', 'generated-images');
+if (!fs.existsSync(GENERATED_IMAGES_DIR)) {
+  fs.mkdirSync(GENERATED_IMAGES_DIR, { recursive: true });
+}
 
 // Types for story generation
 export type GenerateStoryRequest = {
@@ -154,7 +165,7 @@ export async function generateStory({
         The following characters/locations/objects appear on this page:
         ${entityDescriptions}
         
-        Create a detailed, vivid image prompt for DALL-E that will:
+        Create a detailed, vivid image generation prompt that will:
         1. Accurately represent the scene described in the text
         2. Include all mentioned characters with EXACT visual consistency based on their detailed descriptions
         3. Be appropriate for children aged ${ageRange} years
@@ -168,6 +179,7 @@ export async function generateStory({
         - Character positioning clearly shows their relationships and actions
         
         Focus on the main action or scene from the text, but include all characters mentioned.
+        Create a children's book illustration style with bright colors and child-friendly imagery.
         
         Give me ONLY the image prompt text without any explanations or formatting.
       `;
@@ -234,6 +246,57 @@ interface GenerateImageResult {
 }
 
 /**
+ * Generate an image using Google Gemini (Nano Banana model) and save to filesystem
+ * Returns a URL path that can be served by the server
+ */
+async function generateGeminiImage(prompt: string): Promise<string> {
+  try {
+    console.log("Generating image with Gemini (Nano Banana):", prompt.substring(0, 100) + "...");
+    
+    const response = await geminiAI.models.generateContent({
+      model: "gemini-2.5-flash-preview-image-generation",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+
+    const candidates = response.candidates;
+    if (!candidates || candidates.length === 0) {
+      throw new Error("No candidates returned from Gemini");
+    }
+
+    const content = candidates[0].content;
+    if (!content || !content.parts) {
+      throw new Error("No content parts in Gemini response");
+    }
+
+    // Find the image part in the response
+    for (const part of content.parts) {
+      if (part.inlineData && part.inlineData.data) {
+        // Generate unique filename
+        const filename = `${uuidv4()}.png`;
+        const filepath = path.join(GENERATED_IMAGES_DIR, filename);
+        
+        // Save the image to filesystem
+        const imageData = Buffer.from(part.inlineData.data, "base64");
+        fs.writeFileSync(filepath, imageData);
+        
+        console.log(`Image saved to: ${filepath}`);
+        
+        // Return the URL path that can be served
+        return `/generated-images/${filename}`;
+      }
+    }
+
+    throw new Error("No image data found in Gemini response");
+  } catch (error) {
+    console.error("Gemini image generation error:", error);
+    throw new Error(`Failed to generate image with Gemini: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
  * Generate character reference images first to establish visual consistency
  * This creates individual character portraits that can be referenced in story scenes
  */
@@ -251,20 +314,7 @@ Child-friendly, bright colors.
 
   console.log(`Generating character reference for ${character.name}`);
 
-  const response = await openaiImage.images.generate({
-    model: "dall-e-3",
-    prompt: characterPrompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard",
-    style: "vivid",
-  });
-
-  if (!response.data[0].url) {
-    throw new Error(`No image URL returned for character ${character.name}`);
-  }
-
-  return response.data[0].url;
+  return await generateGeminiImage(characterPrompt);
 }
 
 /**
@@ -296,20 +346,7 @@ STYLE: Bright colors, child-friendly illustrations.
 
   console.log(`Generating scene with character references: ${characters.map(c => c.name).join(', ')}`);
 
-  const response = await openaiImage.images.generate({
-    model: "dall-e-3",
-    prompt: enhancedPrompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard",
-    style: "vivid",
-  });
-
-  if (!response.data[0].url) {
-    throw new Error("No image URL returned for scene");
-  }
-
-  return response.data[0].url;
+  return await generateGeminiImage(enhancedPrompt);
 }
 
 /**
@@ -488,39 +525,12 @@ STYLE: Bright colors, child-friendly illustrations.
     // Log the prompt for debugging purposes
     console.log("Generating image with prompt:", wrappedPrompt);
     
-    // Prepare request parameters with only the required fields
-    // This helps avoid invalid parameter errors
-    const requestParams: any = {
-      model: "dall-e-3",         // Use DALL-E 3 for highest quality illustrations
-      prompt: wrappedPrompt,     // The enhanced prompt
-      n: 1,                      // Generate one image
-      size: "1024x1024",         // Square format (DALL-E 3 only supports 1024x1024, 1792x1024, or 1024x1792)
-      quality: "standard",       // Standard quality for reliability
-      style: "vivid",            // Vivid style for children's illustrations
-    };
-    
-    // Only add reference_image_ids if actually needed and valid
-    // OpenAI doesn't like empty arrays or invalid reference IDs
-    if (Object.keys(entityReferenceIds).length > 0) {
-      // For now, we'll disable this feature since it might be causing issues
-      // We'll use prompt engineering for consistency instead
-      // requestParams.reference_image_ids = Object.values(entityReferenceIds);
-    }
-    
-    // Call the OpenAI API to generate the image using DALL-E 3
-    const response = await openaiImage.images.generate(requestParams);
-
-    // Validate the response
-    if (!response.data[0].url) {
-      throw new Error("No image URL returned from OpenAI");
-    }
-    
-    // Extract the revised prompt if available (DALL-E sometimes modifies prompts)
-    const revised_prompt = response.data[0].revised_prompt || '';
+    // Call Gemini (Nano Banana) to generate the image
+    const imageUrl = await generateGeminiImage(wrappedPrompt);
     
     // For simple string prompts, just return the URL
     if (typeof prompt === 'string') {
-      return response.data[0].url;
+      return imageUrl;
     }
     
     // Create a map of character image references for entities in this image
@@ -534,10 +544,9 @@ STYLE: Bright colors, child-friendly illustrations.
       const pageCharacters = entities.filter(e => e.type === 'character');
       
       // Store simple reference to the character's first appearance
-      // In a production system, we would extract more detailed reference data
       pageCharacters.forEach(character => {
         characterImageReferences[character.id] = {
-          imageUrl: response.data[0].url,
+          imageUrl: imageUrl,
           characterName: character.name,
           timestamp: new Date().toISOString()
         };
@@ -546,14 +555,11 @@ STYLE: Bright colors, child-friendly illustrations.
     
     // For complex options, return a complete result object with metadata
     return {
-      url: response.data[0].url,
-      revised_prompt: revised_prompt,
+      url: imageUrl,
+      revised_prompt: wrappedPrompt,
       generatedIds: {
-        // Store entity IDs mapped to DALL-E's internal reference system
-        // For now, we maintain the existing dictionary
         ...entityReferenceIds
       },
-      // Include reference data for characters to maintain consistency
       characterImageReferences
     };
   } catch (error) {
