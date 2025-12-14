@@ -40,7 +40,7 @@ export default function Footer() {
             <ul className="space-y-2">
               <li><a href="#" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Help Center</a></li>
               <li><a href="#" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Contact Us</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Privacy Policy</a></li>
+              <li><a href="/privacy" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-privacy">Privacy Policy</a></li>
               <li><a href="#" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Terms of Service</a></li>
             </ul>
           </div>

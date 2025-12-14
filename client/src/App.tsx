@@ -7,9 +7,9 @@ import Home from "@/pages/Home";
 import CreateStory from "@/pages/CreateStory";
 import MyStories from "@/pages/MyStories";
 import ViewStory from "@/pages/ViewStory";
+import Privacy from "@/pages/Privacy";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useState } from "react";
 
 function Router() {
   return (
@@ -18,6 +18,7 @@ function Router() {
       <Route path="/create" component={CreateStory} />
       <Route path="/my-stories" component={MyStories} />
       <Route path="/stories/:id" component={ViewStory} />
+      <Route path="/privacy" component={Privacy} />
       <Route component={NotFound} />
     </Switch>
   );
