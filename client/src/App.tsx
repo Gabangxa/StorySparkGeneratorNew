@@ -8,6 +8,7 @@ import CreateStory from "@/pages/CreateStory";
 import MyStories from "@/pages/MyStories";
 import ViewStory from "@/pages/ViewStory";
 import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/my-stories" component={MyStories} />
       <Route path="/stories/:id" component={ViewStory} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
       <Route component={NotFound} />
     </Switch>
   );

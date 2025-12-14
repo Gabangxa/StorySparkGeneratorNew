@@ -1,0 +1,87 @@
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
+
+export default function Terms() {
+  return (
+    <div className="container mx-auto py-12 px-4 max-w-4xl">
+      <h1 className="text-4xl font-bold mb-8 text-[#2D3436]" data-testid="text-terms-title">Terms of Service</h1>
+      <Card>
+        <CardContent className="p-8">
+          <ScrollArea className="h-[800px] pr-4">
+            <div className="space-y-6 text-gray-700">
+              <p className="text-sm text-gray-500">Last Updated: {new Date().toLocaleDateString()}</p>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-3 text-[#2D3436]">1. Acceptance of Terms</h2>
+                <p>
+                  By accessing and using StoryWonder (the "Service"), you agree to be bound by these Terms of Service. 
+                  If you do not agree to these terms, please do not use the Service.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-3 text-[#2D3436]">2. Description of Service</h2>
+                <p>
+                  StoryWonder is an AI-powered platform that allows users to generate custom children's stories and illustrations. 
+                  The Service utilizes third-party AI models (OpenAI and Google Gemini) to generate content.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-3 text-[#2D3436]">3. AI Content Disclaimer</h2>
+                <p className="font-semibold text-red-500 mb-2">Please read carefully:</p>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>
+                    <strong>Accuracy:</strong> AI may produce content that is inaccurate, nonsensical, or not suitable for all ages ("hallucinations"). 
+                    You are responsible for reviewing all generated stories before sharing them with children.
+                  </li>
+                  <li>
+                    <strong>Suitability:</strong> We make no guarantees that the generated content will be appropriate for any specific age group. 
+                    The "Age Range" feature is a prompt to the AI, not a guarantee of safety.
+                  </li>
+                  <li>
+                    <strong>Uniqueness:</strong> Due to the nature of AI, other users may generate content that is similar to yours.
+                  </li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-3 text-[#2D3436]">4. Intellectual Property & Ownership</h2>
+                <p>
+                  <strong>Your Inputs:</strong> You retain all rights to the text descriptions and inputs you provide to the Service.
+                </p>
+                <p className="mt-2">
+                  <strong>Generated Output:</strong> To the fullest extent permitted by law, we assign to you all rights, title, and interest 
+                  in the specific stories and images you generate using the Service. However, you understand that AI-generated content may not 
+                  be eligible for copyright protection in certain jurisdictions.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-3 text-[#2D3436]">5. Acceptable Use Policy</h2>
+                <p>You agree NOT to use the Service to generate:</p>
+                <ul className="list-disc pl-6 mt-2 space-y-1">
+                  <li>Sexual, pornographic, or obscene content.</li>
+                  <li>Hate speech, harassment, or content that promotes violence.</li>
+                  <li>Content that infringes on the intellectual property or privacy rights of others.</li>
+                  <li>Misinformation or content intended to deceive.</li>
+                </ul>
+                <p className="mt-2">
+                  Violation of this policy will result in immediate account termination.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-3 text-[#2D3436]">6. Limitation of Liability</h2>
+                <p>
+                  The Service is provided "AS IS" and "AS AVAILABLE." StoryWonder shall not be liable for any indirect, incidental, 
+                  special, consequential, or punitive damages arising out of your use of the Service or the content generated thereby.
+                </p>
+              </section>
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
