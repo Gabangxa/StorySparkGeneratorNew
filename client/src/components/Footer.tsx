@@ -1,6 +1,7 @@
 import { BookOpen, Facebook, Twitter, Instagram, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 export default function Footer() {
   return (
@@ -29,9 +30,9 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-bold mb-4">Quick Links</h4>
             <ul className="space-y-2">
-              <li><a href="/" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Home</a></li>
-              <li><a href="/create" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Create Story</a></li>
-              <li><a href="/my-stories" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">My Stories</a></li>
+              <li><Link href="/" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-home">Home</Link></li>
+              <li><Link href="/create" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-create">Create Story</Link></li>
+              <li><Link href="/my-stories" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-my-stories">My Stories</Link></li>
             </ul>
           </div>
           
@@ -40,8 +41,8 @@ export default function Footer() {
             <ul className="space-y-2">
               <li><a href="#" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Help Center</a></li>
               <li><a href="#" className="text-gray-400 hover:text-[#FF6B6B] transition-colors">Contact Us</a></li>
-              <li><a href="/privacy" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-privacy">Privacy Policy</a></li>
-              <li><a href="/terms" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-terms">Terms of Service</a></li>
+              <li><Link href="/privacy" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-privacy">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="text-gray-400 hover:text-[#FF6B6B] transition-colors" data-testid="link-terms">Terms of Service</Link></li>
             </ul>
           </div>
           
@@ -53,8 +54,9 @@ export default function Footer() {
                 type="email" 
                 placeholder="Your email address" 
                 className="bg-gray-700 text-white rounded-r-none focus:outline-none border-0"
+                data-testid="input-newsletter-email"
               />
-              <Button className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white rounded-l-none">
+              <Button className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white rounded-l-none" data-testid="button-newsletter-subscribe">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
