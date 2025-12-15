@@ -126,7 +126,7 @@ export default function MyStories() {
         {stories?.map((story) => (
           <Card key={story.id} className="overflow-hidden story-card">
             <div 
-              className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden"
+              className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden relative"
               style={{
                 backgroundImage: story.pages[0]?.imageUrl ? `url(${story.pages[0]?.imageUrl})` : 'none',
                 backgroundSize: 'cover',
@@ -136,10 +136,14 @@ export default function MyStories() {
               {!story.pages[0]?.imageUrl && (
                 <p className="text-gray-400">No preview available</p>
               )}
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60"></div>
-              <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                <h3 className="font-bold text-lg truncate">{story.title}</h3>
-              </div>
+              {story.pages[0]?.imageUrl && (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60"></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                    <h3 className="font-bold text-lg truncate">{story.title}</h3>
+                  </div>
+                </>
+              )}
             </div>
             <CardContent className="p-4">
               <p className="text-sm text-gray-600 mb-2 line-clamp-2 h-10">
