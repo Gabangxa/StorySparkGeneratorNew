@@ -22,6 +22,69 @@ if (!fs.existsSync(GENERATED_IMAGES_DIR)) {
   fs.mkdirSync(GENERATED_IMAGES_DIR, { recursive: true });
 }
 
+// Detailed art style descriptions for distinctive visual outputs
+const ART_STYLE_DESCRIPTIONS: Record<string, string> = {
+  anime: `Japanese anime style with:
+- Large expressive eyes with detailed highlights and reflections
+- Soft, smooth skin shading with cel-shaded shadows
+- Vibrant, saturated colors with high contrast
+- Clean, bold outlines with varying line weights
+- Dynamic poses and exaggerated expressions
+- Simplified but elegant backgrounds with soft gradients
+- Hair rendered with flowing strands and glossy highlights
+- Characters with slim proportions and pointed chins`,
+
+  watercolor: `Traditional watercolor painting style with:
+- Soft, wet-on-wet blending with visible paint bleeds
+- Translucent, layered washes of color
+- Subtle color variations within areas (granulation)
+- Soft, undefined edges that fade into white paper
+- Gentle brushstrokes visible in texture
+- Muted, pastel color palette with organic tones
+- Loose, sketchy linework or no outlines
+- White spaces left for highlights (paper showing through)
+- Dreamy, ethereal atmosphere`,
+
+  "3d_cartoon": `Pixar/Disney-style 3D animated look with:
+- Smooth, rounded forms with subsurface scattering on skin
+- Exaggerated proportions (large heads, big eyes)
+- Soft ambient occlusion and global illumination
+- Rich, saturated colors with subtle gradients
+- Clean, polished surfaces with subtle texture
+- Expressive, squash-and-stretch style poses
+- Soft shadows and rim lighting
+- Stylized but realistic materials
+- Warm, inviting lighting like animated films`,
+
+  pixel_art: `Retro pixel art style with:
+- Limited color palette (8-16 colors maximum)
+- Clear individual pixels visible (no anti-aliasing)
+- Dithering patterns for shading and gradients
+- Bold, simple shapes defined by pixel placement
+- Nostalgic 16-bit video game aesthetic
+- Black or dark outlines around characters
+- Flat colors with minimal shading
+- Chunky, blocky character designs
+- Simple backgrounds with repeating tile patterns`,
+
+  comic_book: `Classic comic book illustration style with:
+- Bold, confident black ink outlines
+- Ben-Day dots or halftone patterns for shading
+- Flat, solid color fills with limited palette
+- Dynamic action poses and dramatic angles
+- Speed lines and motion effects
+- Strong shadows with hard edges
+- Expressive, exaggerated facial features
+- Panel-ready composition with clear focal points
+- Pop art influence with bold primary colors`
+};
+
+// Helper function to get detailed style description
+function getArtStyleDescription(style: string): string {
+  const normalizedStyle = style.toLowerCase().replace(/\s+/g, '_');
+  return ART_STYLE_DESCRIPTIONS[normalizedStyle] || `${style} illustration style with bright, child-friendly colors`;
+}
+
 // Types for story generation
 export type GenerateStoryRequest = {
   title: string;
@@ -357,18 +420,29 @@ async function generateGeminiImage(options: string | GeminiImageOptions): Promis
  * This creates individual character portraits that can be referenced in story scenes
  */
 async function generateCharacterReference(character: StoryEntity, artStyle: string): Promise<string> {
+  const styleDescription = getArtStyleDescription(artStyle);
+  
   const characterPrompt = `
-Create a character reference sheet for a children's book character in ${artStyle} style.
+Create a character reference sheet for a children's book character.
 
-CHARACTER: ${character.name}
+=== ART STYLE (MUST FOLLOW EXACTLY) ===
+${styleDescription}
+
+=== CHARACTER DETAILS ===
+NAME: ${character.name}
 DESCRIPTION: ${character.description}
 
-Show the character in a neutral pose, front-facing view, with clear visibility of all distinguishing features.
-Clean white background. Focus on establishing the character's definitive appearance for use in multiple scenes.
-Child-friendly, bright colors.
+=== COMPOSITION ===
+- Show the character in a neutral pose, front-facing view
+- Clear visibility of all distinguishing features
+- Clean white or simple gradient background
+- Focus on establishing the character's definitive appearance
+- Child-friendly, appealing design
+
+IMPORTANT: The art style characteristics listed above are MANDATORY. Every visual element must reflect the specified style.
   `.trim();
 
-  console.log(`Generating character reference for ${character.name}`);
+  console.log(`Generating character reference for ${character.name} in ${artStyle} style`);
 
   return await generateGeminiImage(characterPrompt);
 }
@@ -384,6 +458,8 @@ async function generateSceneWithCharacterReferences(
   characterImageUrls: Record<string, string>,
   artStyle: string
 ): Promise<string> {
+  const styleDescription = getArtStyleDescription(artStyle);
+  
   // Build character reference descriptions based on the reference images
   const characterRefs = characters
     .filter(char => characterImageUrls[char.id])
@@ -401,14 +477,21 @@ async function generateSceneWithCharacterReferences(
   const enhancedPrompt = `
 Use the reference image(s) above as strict visual references for the characters.
 
-Create a children's book illustration in ${artStyle} style.
+=== ART STYLE (MUST FOLLOW EXACTLY) ===
+${styleDescription}
 
-SCENE: ${scenePrompt}
+=== SCENE DESCRIPTION ===
+${scenePrompt}
 
-CHARACTERS: ${characterRefs}
+=== CHARACTER REFERENCES ===
+${characterRefs}
 The characters must look EXACTLY like their reference images. Maintain all visual details including clothing, colors, proportions, and distinctive features.
 
-STYLE: Bright colors, child-friendly illustrations.
+=== REQUIREMENTS ===
+- Child-friendly illustration suitable for a storybook
+- The art style characteristics listed above are MANDATORY
+- Every visual element must reflect the specified style
+- Maintain consistent lighting and color harmony
   `.trim();
 
   console.log(`Generating scene with character references: ${characters.map(c => c.name).join(', ')}`);
@@ -568,33 +651,48 @@ export async function generateImage(
       characterConsistencyBlock += "\nMAINTAIN EXACT APPEARANCE: Colors, shapes, and materials must be identical in every scene.\n";
     }
     
+    // Get detailed style description for the art style
+    const styleDescription = getArtStyleDescription(artStyle);
+    
     // Create the main prompt based on page type
     if (isFirstPage) {
       wrappedPrompt = `
-Create a children's book illustration in ${formattedArtStyle} style.
+Create a children's book illustration.
+
+=== ART STYLE (MUST FOLLOW EXACTLY) ===
+${styleDescription}
 
 IMPORTANT: This is the FIRST page - establish definitive character designs that will be maintained throughout the story.
 
-SCENE:
+=== SCENE ===
 ${trimmedFinalPrompt}${characterConsistencyBlock}
 
-STYLE: Bright colors, child-friendly illustrations with clear, distinctive character features.
+=== REQUIREMENTS ===
+- Child-friendly illustration suitable for a storybook
+- Clear, distinctive character features
+- The art style characteristics listed above are MANDATORY
+- Every visual element must reflect the specified style
 `;
     } else {
       // For subsequent pages, use stronger consistency language
       const characterNames = characterEntities.map(e => e.name).join(', ');
       
       wrappedPrompt = `
-Create a children's book illustration in ${formattedArtStyle} style.
+Create a children's book illustration.
+
+=== ART STYLE (MUST FOLLOW EXACTLY) ===
+${styleDescription}
 
 CRITICAL: Characters (${characterNames}) must appear EXACTLY as established in previous illustrations.
 
-SCENE:
+=== SCENE ===
 ${trimmedFinalPrompt}${characterConsistencyBlock}
 
-CONSISTENCY RULE: Every visual detail of each character must match their previous appearances precisely.
-
-STYLE: Bright colors, child-friendly illustrations.
+=== REQUIREMENTS ===
+- Every visual detail of each character must match their previous appearances precisely
+- Child-friendly illustration suitable for a storybook
+- The art style characteristics listed above are MANDATORY
+- Every visual element must reflect the specified style
 `;
     }
 
