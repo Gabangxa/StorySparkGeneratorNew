@@ -143,7 +143,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const characterReferenceImages: Record<string, any> = {};
       
       // Use pre-generated character images if available
+      // These images come from Step 5 (Character Review) and should be used as visual references
       const preGeneratedCharacterImages = characterImages || {};
+      
+      // Extract just the image URLs from pre-generated images (ignore IDs since they may not match)
+      // These will be passed as reference images to every scene for visual consistency
+      const preGeneratedImageUrls: string[] = Object.values(preGeneratedCharacterImages).filter(Boolean) as string[];
+      
+      console.log(`Using ${preGeneratedImageUrls.length} pre-generated character images as visual references`);
       
       // Generate illustrations for each page, processing sequentially to maintain consistency
       // This ensures that character appearances from early pages inform later ones
@@ -187,15 +194,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Combine all entities needed for this page
         const allRelevantEntities = [...pagePrimaryEntities, ...recurringEntityObjects];
         
-        // Build a reference image map for consistency with previous character appearances
-        const characterReferenceURLs: Record<string, string> = {};
+        // Build reference image arrays for consistency
+        // Combine pre-generated character images with any images from earlier pages
+        const characterReferencePaths: string[] = [...preGeneratedImageUrls];
         
-        // Add references to characters that have appeared before
+        // Also add references to character images from earlier pages in this story
         recurringPageEntities.forEach(entityId => {
-          if (entityFirstImageURLs[entityId]) {
-            characterReferenceURLs[entityId] = entityFirstImageURLs[entityId];
+          if (entityFirstImageURLs[entityId] && !characterReferencePaths.includes(entityFirstImageURLs[entityId])) {
+            characterReferencePaths.push(entityFirstImageURLs[entityId]);
           }
         });
+        
+        // Log which character references are being used
+        if (characterReferencePaths.length > 0) {
+          console.log(`Page ${index + 1}: Using ${characterReferencePaths.length} character reference images (${preGeneratedImageUrls.length} from Step 5)`);
+        }
         
         // Log page entity information for debugging and monitoring
         console.log(`Page ${index + 1}: ` + 
@@ -209,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityReferenceIds: pageEntityRefs,         // References to maintain visual consistency
           artStyle,                                   // User-selected art style
           entities: allRelevantEntities,              // ALL relevant entities including those from other pages
-          characterReferenceURLs,                     // URLs of previous character images for reference
+          characterReferencePaths,                    // Paths to character reference images (from Step 5 + earlier pages)
           isFirstPage: index === 0                    // Flag if this is the first page of the story
         });
         
@@ -515,21 +528,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { character, artStyle } = parsedBody.data;
       
-      // Generate character reference image
+      // Generate character reference image using the full options object
+      // This ensures the detailed art style descriptions are used
       const characterPrompt = `
-Create a character reference portrait for a children's book in ${artStyle} style.
+Create a character reference portrait for a children's book.
 
 CHARACTER: ${character.name}
 DESCRIPTION: ${character.description}
 
 Show the character in a neutral standing pose, front-facing view, full body visible.
 Clean white background. Focus on establishing clear, distinctive character features.
-Child-friendly, bright colors with crisp details.
+Child-friendly design with crisp details.
       `.trim();
 
-      console.log(`Generating character reference for ${character.name}`);
+      console.log(`Generating character reference for ${character.name} in ${artStyle} style`);
 
-      const response = await generateImage(characterPrompt);
+      // Pass as options object so artStyle is used with detailed style descriptions
+      const response = await generateImage({
+        prompt: characterPrompt,
+        artStyle: artStyle,
+        entities: [character],
+        isFirstPage: true
+      });
       const imageUrl = typeof response === 'string' ? response : response.url;
       
       console.log(`Generated character image for ${character.name}:`, imageUrl);
