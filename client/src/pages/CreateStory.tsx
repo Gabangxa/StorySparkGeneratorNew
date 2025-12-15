@@ -24,7 +24,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   ArrowLeft, ArrowRight, Loader2, WandSparkles, 
-  Users, MapPin, Package2, Eye, BookOpen 
+  Users, MapPin, Package2, Eye, BookOpen, ImageIcon 
 } from "lucide-react";
 import StoryTypeCard from "@/components/StoryTypeCard";
 import ArtStyleCard from "@/components/ArtStyleCard";
@@ -879,14 +879,15 @@ export default function CreateStory() {
                   <div 
                     className={`story-card bg-white border-2 ${field.value === 'side_by_side' ? 'border-[#FF6B6B]' : 'border-gray-200 hover:border-[#FF6B6B]'} rounded-xl overflow-hidden cursor-pointer`}
                     onClick={() => field.onChange('side_by_side')}
+                    data-testid="layout-side-by-side"
                   >
                     <div className="aspect-video bg-gray-100 flex items-center justify-center">
                       <div className="w-4/5 aspect-[4/3] bg-white shadow-md flex">
                         <div className="w-1/2 bg-[#FF6B6B]/10 flex items-center justify-center">
-                          <div className="text-[#FF6B6B] text-3xl">🖼️</div>
+                          <ImageIcon className="text-[#FF6B6B] h-8 w-8" />
                         </div>
                         <div className="w-1/2 p-3 flex items-center">
-                          <div className="space-y-2">
+                          <div className="space-y-2 w-full">
                             <div className="h-2 bg-gray-200 rounded-full w-full"></div>
                             <div className="h-2 bg-gray-200 rounded-full w-full"></div>
                             <div className="h-2 bg-gray-200 rounded-full w-3/4"></div>
@@ -904,11 +905,12 @@ export default function CreateStory() {
                   <div 
                     className={`story-card bg-white border-2 ${field.value === 'picture_top' ? 'border-[#FF6B6B]' : 'border-gray-200 hover:border-[#FF6B6B]'} rounded-xl overflow-hidden cursor-pointer`}
                     onClick={() => field.onChange('picture_top')}
+                    data-testid="layout-picture-top"
                   >
                     <div className="aspect-video bg-gray-100 flex items-center justify-center">
                       <div className="w-4/5 aspect-[4/3] bg-white shadow-md flex flex-col">
                         <div className="h-3/5 bg-[#4ECDC4]/10 flex items-center justify-center">
-                          <div className="text-[#4ECDC4] text-3xl">🖼️</div>
+                          <ImageIcon className="text-[#4ECDC4] h-8 w-8" />
                         </div>
                         <div className="h-2/5 p-3">
                           <div className="space-y-2">
