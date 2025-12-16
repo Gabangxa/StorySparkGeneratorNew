@@ -2,11 +2,12 @@ import { pgTable, text, serial, integer, jsonb, timestamp } from "drizzle-orm/pg
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Base user schema (unchanged)
+// Base user schema with credits system
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  credits: integer("credits").default(3).notNull(), // Start with 3 free credits
 });
 
 // Story art styles
