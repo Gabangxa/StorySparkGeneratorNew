@@ -51,6 +51,7 @@ export type StoryPage = {
 // Stories schema
 export const stories = pgTable("stories", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id"), // Link stories to users
   title: text("title").notNull(),
   description: text("description").notNull(),
   storyType: text("story_type").notNull(),
