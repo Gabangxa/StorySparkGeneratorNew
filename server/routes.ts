@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user = await storage.createUser({ username: "demo_user", password: "demo" });
       }
       
-      res.json({ credits: user.credits, userId: user.id });
+      res.json({ credits: user.credits, userId: user.id, username: user.username });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch credits" });
     }

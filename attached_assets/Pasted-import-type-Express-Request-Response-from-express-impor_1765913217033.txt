@@ -1,0 +1,71 @@
+import type { Express, Request, Response } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { storyFormSchema } from "@shared/schema";
+import { generateStory, generateImage } from "./openai";
+import { z } from "zod";
+
+// Helper to check authentication (Middleware)
+function isAuthenticated(req: Request, res: Response, next: any) {
+  if (req.isAuthenticated()) return next();
+  res.status(401).json({ message: "Please log in to create stories" });
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // ... existing GET routes ...
+
+  // MODIFIED: Create Story Endpoint
+  app.post("/api/stories", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // 1. Check Credits
+      const userId = (req.user as any).id;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.credits <= 0) {
+        return res.status(403).json({ 
+          message: "You have used all your free credits. Please upgrade to continue creating stories." 
+        });
+      }
+
+      // ... existing story generation logic ...
+      const { pages: storyPages, characterImages, ...formData } = req.body;
+      const parsedBody = storyFormSchema.safeParse(formData);
+      
+      if (!parsedBody.success) {
+        return res.status(400).json({ 
+          message: "Invalid story data", 
+          errors: parsedBody.error.errors 
+        });
+      }
+
+      const { title, description, storyType, ageRange, artStyle, layoutType } = parsedBody.data;
+
+      // ... (Keep existing generation logic: generateStory, generateImage loop) ...
+      // For brevity, assuming the generation logic is here as previously written
+      
+      // ... AFTER successful generation and storage ...
+      
+      // 2. Deduct Credit
+      await storage.updateUserCredits(userId, user.credits - 1);
+
+      // Return the new story
+      // const newStory = ... (from existing code)
+      // res.status(201).json(newStory); 
+      
+      // IMPORTANT: Paste back your existing logic here, just wrapping it in the credit check
+      // and adding the deduction at the end.
+
+    } catch (error) {
+      console.error("Error creating story:", error);
+      res.status(500).json({ 
+        message: "Failed to create story", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // ... keep other routes ...
+  
+  const httpServer = createServer(app);
+  return httpServer;
+}

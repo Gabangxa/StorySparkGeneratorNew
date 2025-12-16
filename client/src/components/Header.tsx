@@ -1,7 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { BookOpen, Menu, User, Sparkles } from "lucide-react";
+import { BookOpen, Menu, User, Zap } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -15,8 +14,9 @@ export default function Header() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { data: creditsData } = useQuery<{ credits: number; userId: number }>({
+  const { data: user } = useQuery<{ credits: number; userId: number; username?: string }>({
     queryKey: ["/api/user/credits"],
+    retry: false
   });
 
   return (
@@ -45,14 +45,15 @@ export default function Header() {
         </nav>
         
         <div className="flex items-center space-x-3">
-          <Badge 
-            variant="outline" 
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 border-[#FFE66D] bg-[#FFE66D]/10 text-[#FF6B6B] font-bold"
-            data-testid="credits-badge"
-          >
-            <Sparkles className="h-4 w-4" />
-            Credits: {creditsData?.credits ?? 0}
-          </Badge>
+          {user && (
+            <div 
+              className="hidden md:flex items-center bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200 mr-2"
+              data-testid="credits-badge"
+            >
+              <Zap className="h-4 w-4 text-yellow-500 mr-1.5" fill="currentColor" />
+              <span className="font-bold text-yellow-700 text-sm">{user.credits} Credits</span>
+            </div>
+          )}
           
           <Button
             variant="ghost"
@@ -63,10 +64,19 @@ export default function Header() {
             <Menu className="h-6 w-6 text-gray-800" />
           </Button>
           
-          <Button className="hidden md:flex bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white items-center">
-            <User className="mr-2 h-4 w-4" />
-            <span>Sign In</span>
-          </Button>
+          {user ? (
+            <Button variant="ghost" className="hidden md:flex items-center">
+              <User className="mr-2 h-4 w-4" />
+              <span>{user.username || 'User'}</span>
+            </Button>
+          ) : (
+            <Link href="/auth">
+              <Button className="hidden md:flex bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white items-center">
+                <User className="mr-2 h-4 w-4" />
+                <span>Sign In</span>
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>
