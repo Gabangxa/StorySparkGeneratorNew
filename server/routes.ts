@@ -7,6 +7,25 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
+  
+  // Get current user credits (using mock user ID 1 for now until auth is implemented)
+  app.get("/api/user/credits", async (req: Request, res: Response) => {
+    try {
+      // TODO: Replace with req.user.id when authentication is implemented
+      const userId = 1;
+      let user = await storage.getUser(userId);
+      
+      // Create default user if doesn't exist
+      if (!user) {
+        user = await storage.createUser({ username: "demo_user", password: "demo" });
+      }
+      
+      res.json({ credits: user.credits, userId: user.id });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch credits" });
+    }
+  });
+
   app.get("/api/stories", async (req: Request, res: Response) => {
     try {
       const stories = await storage.getStories();

@@ -48,6 +48,13 @@ export default function CreateStory() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
+  // Fetch user credits
+  const { data: creditsData } = useQuery<{ credits: number; userId: number }>({
+    queryKey: ["/api/user/credits"],
+  });
+  
+  const hasCredits = (creditsData?.credits ?? 0) > 0;
+
   const form = useForm({
     resolver: zodResolver(storyFormSchema),
     defaultValues: {
@@ -62,7 +69,9 @@ export default function CreateStory() {
 
   const { mutate: createStory, isPending } = useMutation({
     mutationFn: async (data: StoryFormData) => {
-      const response = await apiRequest("POST", "/api/stories", data);
+      // Include userId for credit deduction
+      const requestData = { ...data, userId: creditsData?.userId };
+      const response = await apiRequest("POST", "/api/stories", requestData);
       return response.json();
     },
     onSuccess: (data) => {
@@ -71,6 +80,7 @@ export default function CreateStory() {
         description: "Your story has been generated and saved.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/credits"] });
       navigate(`/stories/${data.id}`);
     },
     onError: (error) => {
@@ -1130,6 +1140,17 @@ export default function CreateStory() {
         </p>
       </div>
       
+      {!hasCredits && (
+        <div className="text-center p-6 bg-gradient-to-r from-[#FF6B6B]/10 to-[#FFE66D]/10 rounded-xl border-2 border-[#FF6B6B]/30 mb-8" data-testid="no-credits-message">
+          <p className="text-lg font-bold text-[#FF6B6B] mb-2">
+            You're out of credits!
+          </p>
+          <p className="text-gray-600">
+            Upgrade to create more magic and bring your stories to life.
+          </p>
+        </div>
+      )}
+      
       <div className="flex justify-between">
         <Button 
           variant="outline"
@@ -1143,8 +1164,9 @@ export default function CreateStory() {
         
         <Button 
           onClick={onSubmit}
-          disabled={isPending}
-          className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl"
+          disabled={isPending || !hasCredits}
+          className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50"
+          data-testid="button-create-storybook"
         >
           {isPending ? (
             <>
