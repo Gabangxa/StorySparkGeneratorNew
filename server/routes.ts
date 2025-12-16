@@ -37,7 +37,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/stories", async (req: Request, res: Response) => {
     try {
       // Parse the form data and additional character images
-      const { pages: storyPages, characterImages, ...formData } = req.body;
+      const { pages: storyPages, characterImages, userId, ...formData } = req.body;
+
+      // Credit check - requires authentication to be set up
+      // TODO: Uncomment when authentication is implemented
+      // if (!req.user) return res.sendStatus(401);
+      // if (req.user.credits <= 0) {
+      //   return res.status(403).json({ message: "Out of credits. Please upgrade." });
+      // }
+      
+      // Alternative: check credits using userId from request body (for testing without auth)
+      if (userId && typeof userId === 'number') {
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        if (user.credits <= 0) {
+          return res.status(403).json({ message: "Out of credits. Please upgrade." });
+        }
+      }
       const parsedBody = storyFormSchema.safeParse(formData);
       
       if (!parsedBody.success) {
@@ -286,6 +304,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pages: storyPagesWithImages,
         entities: storyEntities
       });
+
+      // Deduct credit after successful story creation
+      // TODO: Uncomment when authentication is implemented
+      // if (req.user) {
+      //   await storage.updateUserCredits(req.user.id, req.user.credits - 1);
+      // }
+      
+      // Alternative: deduct credit using userId from request body (for testing without auth)
+      if (userId && typeof userId === 'number') {
+        const user = await storage.getUser(userId);
+        if (user && user.credits > 0) {
+          await storage.updateUserCredits(userId, user.credits - 1);
+        }
+      }
 
       res.status(201).json(newStory);
     } catch (error) {

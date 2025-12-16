@@ -7,6 +7,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserCredits(userId: number, credits: number): Promise<User | undefined>;
   
   // Story operations
   getStories(): Promise<Story[]>;
@@ -34,6 +35,15 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async updateUserCredits(userId: number, credits: number): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ credits })
+      .where(eq(users.id, userId))
+      .returning();
+    return user || undefined;
   }
 
   // Story operations
