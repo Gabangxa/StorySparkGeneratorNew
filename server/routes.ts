@@ -1,13 +1,38 @@
-import type { Express, Request, Response } from "express";
+
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { storyFormSchema, type StoryPage, type StoryEntity, type StoryEntityWithAppearances } from "@shared/schema";
 import { generateStory, generateImage } from "./openai";
 import { z } from "zod";
+import { storageService } from "./services/storage";
+
+// Authentication middleware
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized. Please log in." });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve generated images from object storage
+  // This replaces the static file serving for production
+  app.get("/generated-images/:filename", async (req: Request, res: Response) => {
+    const filename = req.params.filename;
+    try {
+      const buffer = await storageService.downloadImage(filename);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for a year
+      res.send(buffer);
+    } catch (error) {
+      console.error(`Failed to serve image ${filename}:`, error);
+      res.status(404).send("Image not found");
+    }
+  });
+
   // API routes
-  app.get("/api/stories", async (req: Request, res: Response) => {
+  app.get("/api/stories", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const stories = await storage.getStories();
       res.json(stories);
@@ -16,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/stories/:id", async (req: Request, res: Response) => {
+  app.get("/api/stories/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -34,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/stories", async (req: Request, res: Response) => {
+  app.post("/api/stories", isAuthenticated, async (req: Request, res: Response) => {
     try {
       // Parse the form data and additional character images
       const { pages: storyPages, characterImages, ...formData } = req.body;
@@ -66,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Combine the pre-written pages with fresh entity data
         generatedStory = {
-          pages: storyPages.map((page, index) => ({
+          pages: storyPages.map((page: any, index: number) => ({
             text: page.text,
             imagePrompt: storyResponse.pages[index]?.imagePrompt || `Create an illustration for: ${page.text.substring(0, 100)}...`,
             entities: storyResponse.pages[index]?.entities || []
@@ -297,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/stories/:id", async (req: Request, res: Response) => {
+  app.delete("/api/stories/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -316,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate a preview story with entities
-  app.post("/api/preview", async (req: Request, res: Response) => {
+  app.post("/api/preview", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const schema = z.object({
         title: z.string().min(1),
@@ -356,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Generate just the story text without images
-  app.post("/api/generate-story-text", async (req: Request, res: Response) => {
+  app.post("/api/generate-story-text", isAuthenticated, async (req: Request, res: Response) => {
     try {
       // For debugging
       console.log("Received generate-story-text request:", JSON.stringify(req.body));
@@ -409,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update story text after user edits
-  app.post("/api/update-story-text", async (req: Request, res: Response) => {
+  app.post("/api/update-story-text", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const schema = z.object({
         pages: z.array(z.object({
@@ -443,11 +468,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   /**
    * API endpoint for generating a single illustration with entity consistency
-   * This endpoint can be used independently to generate one-off images
-   * while still maintaining visual consistency with previously generated entities.
-   * Enhanced to accept full entity objects with descriptions for better consistency.
    */
-  app.post("/api/generate-image", async (req: Request, res: Response) => {
+  app.post("/api/generate-image", isAuthenticated, async (req: Request, res: Response) => {
     try {
       // Define validation schema for the request body
       const schema = z.object({
@@ -482,7 +504,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Call our enhanced image generation function with all available entity information
-      // This ensures consistent visuals across independently generated illustrations
       const imageResult = await generateImage({
         prompt,                                    // Base image description
         entityReferenceIds: entityReferenceIds || {}, // Entity reference mappings (if any)
@@ -506,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Generate individual character reference images
    * Creates standalone character portraits for approval before scene generation
    */
-  app.post("/api/generate-character-image", async (req: Request, res: Response) => {
+  app.post("/api/generate-character-image", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const schema = z.object({
         character: z.object({
@@ -578,10 +599,19 @@ Child-friendly design with crisp details.
         return res.status(400).json({ message: "URL parameter is required" });
       }
       
-      // Check if this is a local generated image URL
+      // Check if this is a local generated image URL (served from object storage)
       if (url.startsWith('/generated-images/')) {
-        // For local images, redirect to the static file path
-        return res.redirect(url);
+         // Serve from object storage using the stripped filename
+         // This is redundant to the direct route but keeps proxy logic consistent
+         const filename = url.replace('/generated-images/', '');
+         try {
+             const buffer = await storageService.downloadImage(filename);
+             res.setHeader('Content-Type', 'image/png');
+             return res.send(buffer);
+         } catch(e) {
+             console.error("Failed to serve image from storage:", e);
+             return res.status(404).json({message: "Image not found"});
+         }
       }
       
       // Validate that this is from an expected domain to prevent abuse
@@ -632,5 +662,12 @@ Child-friendly design with crisp details.
   });
 
   const httpServer = createServer(app);
+
+  // Set keep-alive timeout to handle long-running generation requests
+  // Replit standard timeout is often 30-60s, but we want to allow more if possible
+  // or at least fail gracefully.
+  httpServer.keepAliveTimeout = 120000; // 2 minutes
+  httpServer.headersTimeout = 125000;   // slightly higher than keepAliveTimeout
+
   return httpServer;
 }
