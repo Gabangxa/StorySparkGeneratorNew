@@ -41,6 +41,7 @@ export default function CreateStory() {
   const [characterImages, setCharacterImages] = useState<Record<string, string>>({});
   const [approvedCharacters, setApprovedCharacters] = useState<Record<string, boolean>>({});
   const [generatingCharacters, setGeneratingCharacters] = useState(false);
+  const [regeneratingCharacterId, setRegeneratingCharacterId] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<{
     pages: Array<{ text: string; imagePrompt: string; entities: string[] }>;
     entities: StoryEntityWithAppearances[];
@@ -168,6 +169,40 @@ export default function CreateStory() {
       toast({
         title: "Error",
         description: "Failed to generate character images. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation to regenerate a single character image
+  const { mutate: regenerateSingleCharacter } = useMutation({
+    mutationFn: async ({ character, artStyle }: { character: StoryEntityWithAppearances; artStyle: string }) => {
+      setRegeneratingCharacterId(character.id);
+      const response = await apiRequest("POST", "/api/generate-character-image", {
+        character,
+        artStyle
+      });
+      const jsonData = await response.json();
+      console.log(`Regenerated character ${character.id} image:`, jsonData);
+      return { characterId: character.id, imageUrl: jsonData.url };
+    },
+    onSuccess: ({ characterId, imageUrl }) => {
+      setCharacterImages(prev => ({
+        ...prev,
+        [characterId]: imageUrl
+      }));
+      setRegeneratingCharacterId(null);
+      toast({
+        title: "Character regenerated",
+        description: "The character image has been updated.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error regenerating character image:', error);
+      setRegeneratingCharacterId(null);
+      toast({
+        title: "Error",
+        description: "Failed to regenerate character image. Please try again.",
         variant: "destructive"
       });
     }
@@ -990,35 +1025,27 @@ export default function CreateStory() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {characters.map(character => (
               <div key={character.id} className="bg-white border-2 border-gray-200 rounded-xl p-4">
-                <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
+                <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden relative">
+                  {regeneratingCharacterId === character.id && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                      <div className="text-center text-white">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                        <p className="text-sm">Regenerating...</p>
+                      </div>
+                    </div>
+                  )}
                   {characterImages[character.id] ? (
                     <img 
-                      src={`/api/image-proxy?url=${encodeURIComponent(characterImages[character.id])}`} 
+                      src={characterImages[character.id]} 
                       alt={character.name}
                       className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => window.open(characterImages[character.id], '_blank')}
-                      onError={(e) => {
-                        // Fallback to clickable button if image fails to load
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `
-                            <button onclick="window.open('${characterImages[character.id]}', '_blank')" 
-                                    class="w-full h-full bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg hover:bg-blue-100 transition-colors flex flex-col items-center justify-center text-blue-600">
-                              <div class="text-4xl mb-2">🖼️</div>
-                              <p class="text-sm font-medium">Click to View</p>
-                              <p class="text-xs">${character.name}</p>
-                            </button>
-                          `;
-                        }
-                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
                       <div className="text-center">
-                        <div className="text-4xl mb-2">👤</div>
-                        <p className="text-sm">Loading...</p>
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                        <p className="text-sm">Generating...</p>
                       </div>
                     </div>
                   )}
@@ -1051,12 +1078,12 @@ export default function CreateStory() {
                     size="sm"
                     onClick={() => {
                       const artStyle = form.getValues("artStyle");
-                      generateCharacterImages(artStyle);
+                      regenerateSingleCharacter({ character, artStyle });
                     }}
-                    disabled={isGeneratingCharacters}
+                    disabled={regeneratingCharacterId === character.id}
                     className="text-xs"
                   >
-                    {isGeneratingCharacters ? 'Generating...' : 'Regenerate'}
+                    {regeneratingCharacterId === character.id ? 'Generating...' : 'Regenerate'}
                   </Button>
                 </div>
               </div>
