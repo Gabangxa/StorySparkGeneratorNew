@@ -7,13 +7,14 @@ import { generateStory, generateImage } from "./openai";
 import { z } from "zod";
 import { storageService } from "./services/storage";
 
-// Authentication middleware
-const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "Unauthorized. Please log in." });
-};
+// Authentication middleware - temporarily disabled until Passport is configured
+// TODO: Enable authentication when Passport is set up
+// const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+//   if (req.isAuthenticated()) {
+//     return next();
+//   }
+//   res.status(401).json({ message: "Unauthorized. Please log in." });
+// };
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve generated images from object storage
@@ -51,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/stories", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/stories", async (req: Request, res: Response) => {
     try {
       const stories = await storage.getStories();
       res.json(stories);
@@ -60,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/stories/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/stories/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -78,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/stories", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/stories", async (req: Request, res: Response) => {
     try {
       // Parse the form data and additional character images
       const { pages: storyPages, characterImages, userId, ...formData } = req.body;
@@ -373,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/stories/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/stories/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -392,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate a preview story with entities
-  app.post("/api/preview", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/preview", async (req: Request, res: Response) => {
     try {
       const schema = z.object({
         title: z.string().min(1),
@@ -432,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Generate just the story text without images
-  app.post("/api/generate-story-text", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/generate-story-text", async (req: Request, res: Response) => {
     try {
       // For debugging
       console.log("Received generate-story-text request:", JSON.stringify(req.body));
@@ -485,7 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update story text after user edits
-  app.post("/api/update-story-text", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/update-story-text", async (req: Request, res: Response) => {
     try {
       const schema = z.object({
         pages: z.array(z.object({
@@ -520,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * API endpoint for generating a single illustration with entity consistency
    */
-  app.post("/api/generate-image", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/generate-image", async (req: Request, res: Response) => {
     try {
       // Define validation schema for the request body
       const schema = z.object({
@@ -578,7 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Generate individual character reference images
    * Creates standalone character portraits for approval before scene generation
    */
-  app.post("/api/generate-character-image", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/generate-character-image", async (req: Request, res: Response) => {
     try {
       const schema = z.object({
         character: z.object({
