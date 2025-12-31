@@ -103,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Combine the pre-written pages with fresh entity data
         generatedStory = {
-          pages: storyPages.map((page, index) => ({
+          pages: storyPages.map((page: { text: string }, index: number) => ({
             text: page.text,
             imagePrompt: storyResponse.pages[index]?.imagePrompt || `Create an illustration for: ${page.text.substring(0, 100)}...`,
             entities: storyResponse.pages[index]?.entities || []
@@ -134,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First, identify all unique entities across the entire story
       // This helps us maintain consistent appearances throughout all pages
       const allUniqueEntities = Array.from(new Set(
-        generatedStory.pages.flatMap(page => page.entities || [])
+        generatedStory.pages.flatMap((page: { entities?: string[] }) => page.entities || [])
       ));
       
       console.log(`Story has ${allUniqueEntities.length} unique entities across all pages`);
@@ -146,9 +146,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entityFirstAppearance: Record<string, number> = {};
       
       // Process pages to find entity frequency and first appearances
-      generatedStory.pages.forEach((page, pageIndex) => {
+      generatedStory.pages.forEach((page: { entities?: string[] }, pageIndex: number) => {
         const pageEntities = page.entities || [];
-        pageEntities.forEach(entityId => {
+        pageEntities.forEach((entityId: string) => {
           // Count appearances
           entityFrequency[entityId] = (entityFrequency[entityId] || 0) + 1;
           
@@ -199,19 +199,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create a mapping of entity IDs to their DALL-E generation IDs for visual consistency
         const pageEntityRefs: Record<string, string> = {};
-        pageEntities.forEach(entityId => {
+        pageEntities.forEach((entityId: string) => {
           if (entityGenerationIds[entityId]) {
             pageEntityRefs[entityId] = entityGenerationIds[entityId];
           }
         });
         
         // Keep track of which entities are making their first appearance on this page
-        const firstAppearanceEntities = pageEntities.filter(entityId => 
+        const firstAppearanceEntities = pageEntities.filter((entityId: string) => 
           entityFirstAppearance[entityId] === index
         );
         
         // Keep track of entities that have appeared before (for reference)
-        const recurringPageEntities = pageEntities.filter(entityId => 
+        const recurringPageEntities = pageEntities.filter((entityId: string) => 
           entityFirstAppearance[entityId] !== index && 
           entityFirstAppearance[entityId] !== undefined
         );
@@ -236,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const characterReferencePaths: string[] = [...preGeneratedImageUrls];
         
         // Also add references to character images from earlier pages in this story
-        recurringPageEntities.forEach(entityId => {
+        recurringPageEntities.forEach((entityId: string) => {
           if (entityFirstImageURLs[entityId] && !characterReferencePaths.includes(entityFirstImageURLs[entityId])) {
             characterReferencePaths.push(entityFirstImageURLs[entityId]);
           }
@@ -289,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Store first image URLs for entities making their first appearance on this page
-        firstAppearanceEntities.forEach(entityId => {
+        firstAppearanceEntities.forEach((entityId: string) => {
           entityFirstImageURLs[entityId] = imageUrl;
         });
         
