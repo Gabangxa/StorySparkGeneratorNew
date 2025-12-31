@@ -1,4 +1,4 @@
-import { ObjectStorageService } from "../replit_integrations/object_storage";
+import { ObjectStorageService, objectStorageClient } from "../replit_integrations/object_storage";
 import { v4 as uuidv4 } from "uuid";
 
 const objectStorage = new ObjectStorageService();
@@ -8,12 +8,30 @@ export class StorageService {
     const filename = `${uuidv4()}.${mimeType.split('/')[1] || 'png'}`;
     
     try {
-      const privateDir = objectStorage.getPrivateObjectDir();
-      const fullPath = `${privateDir}/${filename}`;
+      // Get the public search paths and use the first one for uploads
+      const publicPaths = objectStorage.getPublicObjectSearchPaths();
+      const publicDir = publicPaths[0]; // e.g., "/bucket-id/public"
+      const fullPath = `${publicDir}/${filename}`;
+      
+      // Parse the path to get bucket name and object name
+      const pathParts = fullPath.split('/').filter(p => p.length > 0);
+      const bucketName = pathParts[0];
+      const objectName = pathParts.slice(1).join('/');
+      
+      // Upload to object storage
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      await file.save(buffer, {
+        contentType: mimeType,
+        resumable: false,
+      });
+      
+      console.log(`Uploaded image to object storage: ${fullPath}`);
       
       return `/generated-images/${filename}`;
     } catch (err: any) {
-      console.error("Object Storage Error:", err);
+      console.error("Object Storage Upload Error:", err);
       throw new Error(`Failed to upload image to object storage: ${err.message}`);
     }
   }
