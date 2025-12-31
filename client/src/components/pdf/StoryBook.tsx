@@ -60,7 +60,7 @@ interface StoryBookProps {
  */
 export default function StoryBook({ story }: StoryBookProps) {
   // Extract all necessary props from the story object
-  const { title, description, pages, layoutType, storyType, ageRange, artStyle } = story;
+  const { title, pages, layoutType, storyType, ageRange, artStyle } = story;
   
   return (
     <Document title={title}>
@@ -70,8 +70,7 @@ export default function StoryBook({ story }: StoryBookProps) {
           {/* Story title */}
           <Text style={styles.title}>{title}</Text>
           
-          {/* Story description */}
-          <Text style={styles.description}>{description}</Text>
+          {/* Story description/prompt removed as requested */}
           
           {/* Story metadata - type, age range, and art style */}
           <Text style={styles.metaInfo}>
