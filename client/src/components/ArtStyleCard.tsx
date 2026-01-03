@@ -2,19 +2,6 @@ import { ART_STYLES, type ArtStyle } from "@shared/schema";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Import SVG assets from the assets directory
-import {
-  animeStyleImage,
-  watercolorStyleImage,
-  cartoon3dStyleImage,
-  pixelArtStyleImage,
-  comicBookStyleImage,
-  minimalistCaricatureStyleImage,
-  lineArtStyleImage,
-  stickManStyleImage,
-  gouacheTextureStyleImage
-} from "@/assets";
-
 interface ArtStyleCardProps {
   style: ArtStyle;
   selected: boolean;
@@ -25,47 +12,47 @@ const artStyleConfig: Record<ArtStyle, { title: string; description: string; ima
   anime: {
     title: "Anime/Manga",
     description: "Expressive characters with Japanese-inspired aesthetics",
-    imageUrl: animeStyleImage
+    imageUrl: "/generated-images/c1d5fa25-5337-4e7a-aa60-1ac251676f9d.png"
   },
   watercolor: {
     title: "Watercolor",
     description: "Soft, dreamy illustrations with gentle colors",
-    imageUrl: watercolorStyleImage
+    imageUrl: "/generated-images/d2f1dd7e-3fb5-4718-987b-7af0eec69a0a.png"
   },
   "3d_cartoon": {
     title: "3D Cartoon",
     description: "Modern, vibrant illustrations with depth",
-    imageUrl: cartoon3dStyleImage
+    imageUrl: "/generated-images/07b5bfd8-a5f4-459b-87fb-05a8a29a02ac.png"
   },
   pixel_art: {
     title: "Pixel Art",
     description: "Retro-inspired digital illustrations",
-    imageUrl: pixelArtStyleImage
+    imageUrl: "/generated-images/1fcf1f05-e3bf-45e1-a2d3-9d28ccfdd0c4.png"
   },
   comic_book: {
     title: "Comic Book",
     description: "Bold, action-oriented illustrations with outlines",
-    imageUrl: comicBookStyleImage
+    imageUrl: "/generated-images/7ad0de70-477e-4ed5-aa76-3abfdfea5fd5.png"
   },
   minimalist_caricature: {
     title: "Minimalist Caricature",
     description: "Simple, exaggerated features with clean lines",
-    imageUrl: minimalistCaricatureStyleImage
+    imageUrl: "/generated-images/e041c11b-723b-4e5b-86ac-58e404b19fd4.png"
   },
   line_art: {
     title: "Line Art",
     description: "Clean outlines and strokes without fills",
-    imageUrl: lineArtStyleImage
+    imageUrl: "/generated-images/635f4922-ed46-403d-b8c3-c111cb335859.png"
   },
   stick_man: {
     title: "Stick Man Style",
     description: "Simple stick figure illustrations",
-    imageUrl: stickManStyleImage
+    imageUrl: "/generated-images/65804239-dd3b-4020-b9ae-9b7e29dea8a5.png"
   },
   gouache_texture: {
     title: "Gouache & Texture",
     description: "Rich, textured paint-like illustrations",
-    imageUrl: gouacheTextureStyleImage
+    imageUrl: "/generated-images/17b40cb6-6186-44dc-91b0-e22a862bea6d.png"
   }
 };
 
