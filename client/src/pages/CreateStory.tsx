@@ -274,6 +274,9 @@ export default function CreateStory() {
         title: "Story created successfully!",
         description: "Your illustrated storybook is ready.",
       });
+      // Invalidate caches so the updated credits and story list are reflected
+      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/credits"] });
       // Navigate to the new story
       navigate(`/stories/${data.id}`);
     },
