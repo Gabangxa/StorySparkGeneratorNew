@@ -33,7 +33,7 @@ export const STORY_TYPES = ["adventure", "moral_lesson", "fun_story"] as const;
 export type StoryType = typeof STORY_TYPES[number];
 
 // Age ranges for stories
-export const AGE_RANGES = ["3-5", "6-8", "9-12"] as const;
+export const AGE_RANGES = ["0-2", "3-5", "6-8", "9-12"] as const;
 export type AgeRange = typeof AGE_RANGES[number];
 
 // Layout options
