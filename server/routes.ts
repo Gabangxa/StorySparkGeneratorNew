@@ -250,39 +250,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`Page ${index + 1} has ${firstAppearanceEntities.length} new entities and ${recurringPageEntities.length} recurring entities`);
         
-        // Get primary entities for this page
+        // Get primary entities for this page - ONLY entities that actually appear on this page
+        // This prevents over-constraining which causes repetitive scenes
         const pagePrimaryEntities = entities.filter(entity => pageEntities.includes(entity.id));
         
-        // For maximum consistency, always include all recurring characters in every prompt
-        // even if they don't appear on this specific page
-        const recurringEntityObjects = recurringEntities
-          .filter(id => !pageEntities.includes(id)) // Only include recurring entities not already on this page
-          .map(id => entityDetailsMap[id])
-          .filter(Boolean);
+        // NOTE: We no longer include all recurring entities in every prompt
+        // This was causing the image generator to produce repetitive/similar images
+        // Now we only include entities that are ACTUALLY on this page
+        const allRelevantEntities = [...pagePrimaryEntities];
         
-        // Combine all entities needed for this page
-        const allRelevantEntities = [...pagePrimaryEntities, ...recurringEntityObjects];
+        // Build reference image arrays for consistency - only for characters ON THIS PAGE
+        // We limit references to prevent over-constraining which causes repetitive scenes
+        const characterReferencePaths: string[] = [];
         
-        // Build reference image arrays for consistency
-        // Combine pre-generated character images with any images from earlier pages
-        const characterReferencePaths: string[] = [...preGeneratedImageUrls];
-        
-        // Also add references to character images from earlier pages in this story
-        recurringPageEntities.forEach((entityId: string) => {
+        // Only add references for characters that actually appear on this page
+        pageEntities.forEach((entityId: string) => {
+          // Check for pre-generated images (from Step 5 character approval)
+          if (characterImages[entityId]) {
+            const imagePath = characterImages[entityId];
+            if (!characterReferencePaths.includes(imagePath)) {
+              characterReferencePaths.push(imagePath);
+            }
+          }
+          // Also check for images from earlier pages
           if (entityFirstImageURLs[entityId] && !characterReferencePaths.includes(entityFirstImageURLs[entityId])) {
             characterReferencePaths.push(entityFirstImageURLs[entityId]);
           }
         });
         
+        // Limit to max 3 reference images to avoid over-constraining
+        const limitedReferencePaths = characterReferencePaths.slice(0, 3);
+        
         // Log which character references are being used
-        if (characterReferencePaths.length > 0) {
-          console.log(`Page ${index + 1}: Using ${characterReferencePaths.length} character reference images (${preGeneratedImageUrls.length} from Step 5)`);
+        if (limitedReferencePaths.length > 0) {
+          console.log(`Page ${index + 1}: Using ${limitedReferencePaths.length} character reference images (limited from ${characterReferencePaths.length} available)`);
         }
         
         // Log page entity information for debugging and monitoring
         console.log(`Page ${index + 1}: ` + 
           `${pagePrimaryEntities.length} visible entities, ` +
-          `${recurringEntityObjects.length} recurring entities for consistency, ` + 
           `${allRelevantEntities.map(e => e.name).join(", ")}`);
         
         // Generate an illustration with our enhanced entity consistency approach
@@ -291,8 +297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityReferenceIds: pageEntityRefs,         // References to maintain visual consistency
           artStyle,                                   // User-selected art style
           colorMode,                                  // User-selected color mode (color or monochrome)
-          entities: allRelevantEntities,              // ALL relevant entities including those from other pages
-          characterReferencePaths,                    // Paths to character reference images (from Step 5 + earlier pages)
+          entities: allRelevantEntities,              // Only entities that appear on THIS page
+          characterReferencePaths: limitedReferencePaths,  // Limited references to avoid over-constraining
           isFirstPage: index === 0                    // Flag if this is the first page of the story
         });
         

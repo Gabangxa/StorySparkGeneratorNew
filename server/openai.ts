@@ -48,6 +48,7 @@ export async function generateStory({
 
     // 2. Generate detailed image prompts for each page
     // Note: We use the existing openai service to enhance prompts
+    const totalPages = storyPages.length;
     const enhancedPages = await Promise.all(storyPages.map(async (page, index) => {
       const pageNum = index + 1;
       const imagePrompt = await openaiService.generateImagePrompt(
@@ -56,7 +57,8 @@ export async function generateStory({
         entities,
         ageRange,
         storyType,
-        pageNum
+        pageNum,
+        totalPages
       );
 
       return {
