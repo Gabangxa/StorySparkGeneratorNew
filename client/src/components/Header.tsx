@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Menu, User, Zap } from "lucide-react";
+import { BookOpen, Menu, User, Zap, LogOut } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 
 const NAV_ITEMS = [
@@ -13,9 +14,12 @@ const NAV_ITEMS = [
 export default function Header() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user: authUser, isLoading: authLoading, logout } = useAuth();
 
-  const { data: user } = useQuery<{ credits: number; userId: number; username?: string }>({
+  // Fetch credits only when authenticated
+  const { data: creditsData } = useQuery<{ credits: number; userId: string; username?: string }>({
     queryKey: ["/api/user/credits"],
+    enabled: !!authUser,
     retry: false
   });
 
@@ -45,13 +49,13 @@ export default function Header() {
         </nav>
         
         <div className="flex items-center space-x-3">
-          {user && (
+          {creditsData && (
             <div 
               className="hidden md:flex items-center bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200 mr-2"
               data-testid="credits-badge"
             >
               <Zap className="h-4 w-4 text-yellow-500 mr-1.5" fill="currentColor" />
-              <span className="font-bold text-yellow-700 text-sm">{user.credits} Credits</span>
+              <span className="font-bold text-yellow-700 text-sm">{creditsData.credits} Credits</span>
             </div>
           )}
           
@@ -64,18 +68,38 @@ export default function Header() {
             <Menu className="h-6 w-6 text-gray-800" />
           </Button>
           
-          {user ? (
-            <Button variant="ghost" className="hidden md:flex items-center">
-              <User className="mr-2 h-4 w-4" />
-              <span>{user.username || 'User'}</span>
-            </Button>
+          {authLoading ? (
+            <span className="text-gray-400 text-sm hidden md:block">Loading...</span>
+          ) : authUser ? (
+            <div className="hidden md:flex items-center space-x-2">
+              <div className="flex items-center">
+                {authUser.profileImageUrl ? (
+                  <img 
+                    src={authUser.profileImageUrl} 
+                    alt="Profile" 
+                    className="h-8 w-8 rounded-full mr-2"
+                  />
+                ) : (
+                  <User className="mr-2 h-4 w-4" />
+                )}
+                <span className="text-sm font-medium">{authUser.firstName || authUser.email || 'User'}</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => logout()}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           ) : (
-            <Link href="/auth">
+            <a href="/api/login">
               <Button className="hidden md:flex bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white items-center">
                 <User className="mr-2 h-4 w-4" />
                 <span>Sign In</span>
               </Button>
-            </Link>
+            </a>
           )}
         </div>
       </div>

@@ -1,16 +1,11 @@
-import { stories, users, type User, type InsertUser, type Story, type InsertStory } from "@shared/schema";
+import { stories, type Story, type InsertStory } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
-// Storage interface for CRUD operations
+// Storage interface for story CRUD operations
+// Note: User operations are handled by authStorage in replit_integrations/auth
 export interface IStorage {
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUserCredits(userId: number, credits: number): Promise<User>;
-  
-  // Story operations
-  getStories(): Promise<Story[]>;
+  getStories(userId?: string): Promise<Story[]>;
   getStory(id: number): Promise<Story | undefined>;
   createStory(story: InsertStory): Promise<Story>;
   updateStory(id: number, story: Partial<InsertStory>): Promise<Story | undefined>;
@@ -18,38 +13,11 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
-  }
-
-  async updateUserCredits(userId: number, credits: number): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ credits })
-      .where(eq(users.id, userId))
-      .returning();
-    
-    if (!user) throw new Error("User not found");
-    return user;
-  }
-
   // Story operations
-  async getStories(): Promise<Story[]> {
+  async getStories(userId?: string): Promise<Story[]> {
+    if (userId) {
+      return db.select().from(stories).where(eq(stories.userId, userId)).orderBy(desc(stories.createdAt));
+    }
     return db.select().from(stories).orderBy(desc(stories.createdAt));
   }
 

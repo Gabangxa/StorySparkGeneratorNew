@@ -2,12 +2,15 @@ import { pgTable, text, serial, integer, jsonb, timestamp } from "drizzle-orm/pg
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Base user schema with credits system
-export const users = pgTable("users", {
+// Re-export auth models
+export * from "./models/auth";
+
+// Legacy user schema (kept for backwards compatibility)
+export const legacyUsers = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  credits: integer("credits").default(3).notNull(), // Start with 3 free credits
+  credits: integer("credits").default(3).notNull(),
 });
 
 // Story art styles
@@ -62,7 +65,7 @@ export type StoryPage = {
 // Stories schema
 export const stories = pgTable("stories", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id"), // Link stories to users
+  userId: text("user_id"), // Link stories to auth_users (string UUID)
   title: text("title").notNull(),
   description: text("description").notNull(),
   storyType: text("story_type").notNull(),
@@ -103,12 +106,7 @@ export const storyFormSchema = z.object({
 export type StoryFormData = z.infer<typeof storyFormSchema>;
 
 // Export types for database operations
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-export type User = typeof users.$inferSelect;
+// Note: User and UpsertUser types are exported from ./models/auth
 
 export type InsertStory = z.infer<typeof insertStorySchema>;
 export type Story = typeof stories.$inferSelect;

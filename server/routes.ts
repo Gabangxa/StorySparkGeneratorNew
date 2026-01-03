@@ -6,17 +6,12 @@ import { storyFormSchema, type StoryPage, type StoryEntity, type StoryEntityWith
 import { generateStory, generateImage } from "./openai";
 import { z } from "zod";
 import { storageService } from "./services/storage";
-
-// Authentication middleware - temporarily disabled until Passport is configured
-// TODO: Enable authentication when Passport is set up
-// const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-//   if (req.isAuthenticated()) {
-//     return next();
-//   }
-//   res.status(401).json({ message: "Unauthorized. Please log in." });
-// };
+import { setupAuth, isAuthenticated, authStorage, registerAuthRoutes } from "./replit_integrations/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup Replit Auth BEFORE registering other routes
+  await setupAuth(app);
+  registerAuthRoutes(app);
   // Serve generated images from object storage
   // This replaces the static file serving for production
   app.get("/generated-images/:filename", async (req: Request, res: Response) => {
@@ -34,43 +29,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API routes
   
-  // Get current user credits (using mock user ID 1 for now until auth is implemented)
-  app.get("/api/user/credits", async (req: Request, res: Response) => {
+  // Get current user credits (requires authentication)
+  app.get("/api/user/credits", isAuthenticated, async (req: any, res: Response) => {
     try {
-      // TODO: Replace with req.user.id when authentication is implemented
-      const userId = 1;
-      let user = await storage.getUser(userId);
-      
-      // Create default user if doesn't exist
-      if (!user) {
-        user = await storage.createUser({ username: "demo_user", password: "demo" });
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
       }
       
-      res.json({ credits: user.credits, userId: user.id, username: user.username });
+      const user = await authStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ 
+        credits: user.credits, 
+        userId: user.id, 
+        username: user.firstName || user.email || 'User'
+      });
     } catch (error) {
+      console.error("Failed to fetch credits:", error);
       res.status(500).json({ message: "Failed to fetch credits" });
     }
   });
 
-  app.get("/api/stories", async (req: Request, res: Response) => {
+  app.get("/api/stories", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const stories = await storage.getStories();
+      const userId = req.user?.claims?.sub;
+      // Get only this user's stories
+      const stories = await storage.getStories(userId);
       res.json(stories);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch stories" });
     }
   });
 
-  app.get("/api/stories/:id", async (req: Request, res: Response) => {
+  app.get("/api/stories/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid story ID" });
       }
 
+      const userId = req.user?.claims?.sub;
       const story = await storage.getStory(id);
       if (!story) {
         return res.status(404).json({ message: "Story not found" });
+      }
+
+      // Only allow access to user's own stories
+      if (story.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
       }
 
       res.json(story);
@@ -79,27 +88,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/stories", async (req: Request, res: Response) => {
+  app.post("/api/stories", isAuthenticated, async (req: any, res: Response) => {
     try {
       // Parse the form data and additional character images
-      const { pages: storyPages, characterImages, userId, ...formData } = req.body;
+      const { pages: storyPages, characterImages, ...formData } = req.body;
 
-      // Credit check - requires authentication to be set up
-      // TODO: Uncomment when authentication is implemented
-      // if (!req.user) return res.sendStatus(401);
-      // if (req.user.credits <= 0) {
-      //   return res.status(403).json({ message: "Out of credits. Please upgrade." });
-      // }
-      
-      // Alternative: check credits using userId from request body (for testing without auth)
-      if (userId && typeof userId === 'number') {
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-        if (user.credits <= 0) {
-          return res.status(403).json({ message: "Out of credits. Please upgrade." });
-        }
+      // Get authenticated user
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Credit check using authenticated user
+      const user = await authStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (user.credits <= 0) {
+        return res.status(403).json({ message: "Out of credits. Please upgrade." });
       }
       const parsedBody = storyFormSchema.safeParse(formData);
       
@@ -339,8 +345,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generationId: entityGenerationIds[entity.id] // Store the generation ID if we have it
       }));
       
-      // Save story to storage
+      // Save story to storage with authenticated user ID
       const newStory = await storage.createStory({
+        userId,
         title,
         description,
         storyType,
@@ -352,17 +359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Deduct credit after successful story creation
-      // TODO: Uncomment when authentication is implemented
-      // if (req.user) {
-      //   await storage.updateUserCredits(req.user.id, req.user.credits - 1);
-      // }
-      
-      // Alternative: deduct credit using userId from request body (for testing without auth)
-      if (userId && typeof userId === 'number') {
-        const user = await storage.getUser(userId);
-        if (user && user.credits > 0) {
-          await storage.updateUserCredits(userId, user.credits - 1);
-        }
+      if (user.credits > 0) {
+        await authStorage.updateUserCredits(userId, user.credits - 1);
       }
 
       res.status(201).json(newStory);
@@ -375,11 +373,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/stories/:id", async (req: Request, res: Response) => {
+  app.delete("/api/stories/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid story ID" });
+      }
+
+      const userId = req.user?.claims?.sub;
+      const story = await storage.getStory(id);
+      if (!story) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+
+      // Only allow deletion of user's own stories
+      if (story.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
       }
 
       const success = await storage.deleteStory(id);
