@@ -12,6 +12,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     padding: 10,
+    position: 'relative',
   },
   // Style for side-by-side layout (image left, text right)
   sideByPage: {
@@ -72,12 +73,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 1.6,
   },
-  // Style for the page number indicator
+  // Style for the page number indicator - centered at bottom
   pageNumber: {
     position: 'absolute',
-    fontSize: 12,
-    bottom: 20,
-    right: 20,
+    fontSize: 10,
+    bottom: 15,
+    left: 0,
+    right: 0,
     textAlign: 'center',
     color: '#666',
   },
@@ -157,10 +159,8 @@ export default function PDFStoryPage({ page, layoutType, totalPages }: PDFStoryP
             {formatText(page.text)}
           </View>
         </View>
-        {/* Page number indicator */}
-        <Text style={styles.pageNumber}>
-          {page.pageNumber} of {totalPages}
-        </Text>
+        {/* Page number indicator - centered at bottom */}
+        <Text style={styles.pageNumber}>{page.pageNumber}</Text>
       </Page>
     );
   } else {
@@ -185,10 +185,8 @@ export default function PDFStoryPage({ page, layoutType, totalPages }: PDFStoryP
             {formatText(page.text)}
           </View>
         </View>
-        {/* Page number indicator */}
-        <Text style={styles.pageNumber}>
-          {page.pageNumber} of {totalPages}
-        </Text>
+        {/* Page number indicator - centered at bottom */}
+        <Text style={styles.pageNumber}>{page.pageNumber}</Text>
       </Page>
     );
   }

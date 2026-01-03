@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
 import { Story } from '@shared/schema';
 import PDFStoryPage from './StoryPage';
 
@@ -13,6 +13,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
     padding: 30,
+    position: 'relative',
   },
   // Cover page centered layout
   coverPage: {
@@ -24,10 +25,11 @@ const styles = StyleSheet.create({
   },
   // Story title on cover page
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
   },
   // Story description on cover page
   description: {
@@ -38,9 +40,31 @@ const styles = StyleSheet.create({
   },
   // Metadata information at bottom of cover page
   metaInfo: {
-    marginTop: 40,
+    marginTop: 20,
     fontSize: 10,
     color: '#666',
+  },
+  // Cover image container
+  coverImageContainer: {
+    width: 200,
+    height: 200,
+    marginBottom: 30,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  // Cover image style
+  coverImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  // Footer at bottom left of cover
+  footer: {
+    position: 'absolute',
+    bottom: 15,
+    left: 30,
+    fontSize: 8,
+    color: '#999',
   },
 });
 
@@ -49,6 +73,21 @@ const styles = StyleSheet.create({
  */
 interface StoryBookProps {
   story: Story;  // The complete story data including pages and metadata
+}
+
+/**
+ * Helper function to get a proxied image URL
+ * This converts external URLs to use our proxy route
+ * to avoid CORS and cross-origin issues with PDF rendering
+ */
+function getProxiedImageUrl(url: string): string {
+  // If already a relative URL, use as is
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, use our image proxy
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
 /**
@@ -62,26 +101,37 @@ export default function StoryBook({ story }: StoryBookProps) {
   // Extract all necessary props from the story object
   const { title, pages, layoutType, storyType, ageRange, artStyle } = story;
   
+  // Get the first page image as cover image (with proxy for CORS)
+  const rawCoverImageUrl = pages.length > 0 && pages[0].imageUrl ? pages[0].imageUrl : null;
+  const coverImageUrl = rawCoverImageUrl ? getProxiedImageUrl(rawCoverImageUrl) : null;
+  
   return (
     <Document title={title}>
-      {/* Cover Page - Contains title, description, and metadata */}
+      {/* Cover Page - Contains title, cover image, and metadata */}
       <Page size="A5" orientation="landscape" style={styles.page}>
         <View style={styles.coverPage}>
           {/* Story title */}
           <Text style={styles.title}>{title}</Text>
           
-          {/* Story description/prompt removed as requested */}
+          {/* Cover image from first page */}
+          {coverImageUrl && (
+            <View style={styles.coverImageContainer}>
+              <Image src={coverImageUrl} style={styles.coverImage} />
+            </View>
+          )}
           
           {/* Story metadata - type, age range, and art style */}
           <Text style={styles.metaInfo}>
-            {storyType.replace('_', ' ')} story for ages {ageRange} • {artStyle.replace('_', ' ')} style
+            A {storyType.replace('_', ' ')} for ages {ageRange}
           </Text>
           
-          {/* Creation metadata - app name and date */}
           <Text style={styles.metaInfo}>
-            Created with StoryWonder • {new Date(story.createdAt).toLocaleDateString()}
+            {artStyle.replace('_', ' ')} style
           </Text>
         </View>
+        
+        {/* Footer at bottom left */}
+        <Text style={styles.footer}>created with StoryWonder</Text>
       </Page>
       
       {/* Map through and render all story pages with consistent layout */}

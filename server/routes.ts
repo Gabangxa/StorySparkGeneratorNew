@@ -589,7 +589,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: z.literal('character'),
           description: z.string(),
         }),
-        artStyle: z.string()
+        artStyle: z.string(),
+        customDescription: z.string().optional(),
+        descriptionMode: z.enum(["merge", "override"]).optional()
       });
       
       const parsedBody = schema.safeParse(req.body);
@@ -600,7 +602,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { character, artStyle } = parsedBody.data;
+      const { character, artStyle, customDescription, descriptionMode } = parsedBody.data;
+      
+      // Determine the final description based on mode
+      let finalDescription = character.description;
+      if (customDescription && customDescription.trim()) {
+        if (descriptionMode === "override") {
+          // Override: Use only the custom description
+          finalDescription = customDescription.trim();
+        } else {
+          // Merge (default): Combine AI description with custom details
+          finalDescription = `${character.description}. Additional details: ${customDescription.trim()}`;
+        }
+      }
       
       // Generate character reference image using the full options object
       // This ensures the detailed art style descriptions are used
@@ -608,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 Create a character reference portrait for a children's book.
 
 CHARACTER: ${character.name}
-DESCRIPTION: ${character.description}
+DESCRIPTION: ${finalDescription}
 
 Show the character in a neutral standing pose, front-facing view, full body visible.
 Clean white background. Focus on establishing clear, distinctive character features.

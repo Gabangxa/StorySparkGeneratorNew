@@ -149,7 +149,9 @@ export default function CreateStory() {
       const characterImagePromises = characters.map(async (character) => {
         const response = await apiRequest("POST", "/api/generate-character-image", {
           character,
-          artStyle
+          artStyle,
+          customDescription: characterDescriptions[character.id] || "",
+          descriptionMode: descriptionModes[character.id] || "merge"
         });
         const jsonData = await response.json();
         console.log(`Character ${character.id} image response:`, jsonData);
@@ -190,7 +192,9 @@ export default function CreateStory() {
       setRegeneratingCharacterId(character.id);
       const response = await apiRequest("POST", "/api/generate-character-image", {
         character,
-        artStyle
+        artStyle,
+        customDescription: characterDescriptions[character.id] || "",
+        descriptionMode: descriptionModes[character.id] || "merge"
       });
       const jsonData = await response.json();
       console.log(`Regenerated character ${character.id} image:`, jsonData);
@@ -259,7 +263,8 @@ export default function CreateStory() {
       const response = await apiRequest("POST", "/api/stories", {
         ...data,
         pages: storyText,
-        characterImages: approvedCharacterUrls
+        characterImages: approvedCharacterUrls,
+        userId: creditsData?.userId
       }, controller.signal);
       return response.json();
     },
