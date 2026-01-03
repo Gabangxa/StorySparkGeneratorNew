@@ -270,8 +270,11 @@ export class OpenAIService {
         2. Include all mentioned characters with consistent appearance but VARIED poses
         3. Be appropriate for children aged ${ageRange} years
         4. Have a cohesive style matching a ${storyType} story
+        5. Contain NO TEXT, words, letters, names, labels, titles, or captions - the image must be purely visual
 
         Focus on the main action or scene from the text. Make this illustration DISTINCT from other pages.
+
+        CRITICAL: The generated prompt MUST include an instruction that the final image should contain NO TEXT of any kind. No character names, no story text, no labels, no captions, no titles - purely visual illustration only.
 
         Give me ONLY the image prompt text without any explanations or formatting.
       `;

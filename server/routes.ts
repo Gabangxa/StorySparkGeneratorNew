@@ -633,15 +633,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate character reference image using the full options object
       // This ensures the detailed art style descriptions are used
+      // IMPORTANT: Avoid labels like "CHARACTER:" or "DESCRIPTION:" as AI models may render them as text
       const characterPrompt = `
-Create a character reference portrait for a children's book.
+A children's book character portrait illustration.
 
-CHARACTER: ${character.name}
-DESCRIPTION: ${finalDescription}
+Draw ${character.name}, ${finalDescription}
 
-Show the character in a neutral standing pose, front-facing view, full body visible.
-Clean white background. Focus on establishing clear, distinctive character features.
-Child-friendly design with crisp details.
+The character should be in a neutral standing pose, front-facing view, with full body visible.
+Use a clean white background. Focus on establishing clear, distinctive character features.
+Child-friendly design with crisp, appealing details.
+
+CRITICAL: Do NOT include any text, words, letters, names, labels, titles, captions, or written elements anywhere in the image. The image must be purely visual with no text of any kind.
       `.trim();
 
       console.log(`Generating character reference for ${character.name} in ${artStyle} style`);
