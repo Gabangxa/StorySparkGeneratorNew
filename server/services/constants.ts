@@ -53,10 +53,63 @@ export const ART_STYLE_DESCRIPTIONS: Record<string, string> = {
 - Strong shadows with hard edges
 - Expressive, exaggerated facial features
 - Panel-ready composition with clear focal points
-- Pop art influence with bold primary colors`
+- Pop art influence with bold primary colors`,
+
+  minimalist_caricature: `Minimalist caricature style with:
+- Simple, clean lines with minimal detail
+- Exaggerated facial features and proportions
+- Bold, confident single-weight outlines
+- Large heads with simplified body shapes
+- Flat colors with no gradients or shading
+- Distinctive, memorable character silhouettes
+- Playful, whimsical expressions
+- Minimal background elements
+- Focus on key identifying features`,
+
+  line_art: `Pure line art illustration style with:
+- Clean, precise ink lines as the primary element
+- No color fills, only outlines and strokes
+- Varying line weights for depth and emphasis
+- Cross-hatching or stippling for shading
+- White background with black lines
+- Elegant, detailed linework
+- Professional illustration quality
+- Clear, readable compositions
+- Artistic pen and ink aesthetic`,
+
+  stick_man: `Simple stick figure illustration style with:
+- Basic stick figure representations of people
+- Circle heads with simple dot eyes and curved smile
+- Single lines for arms, legs, and body
+- Very simple, child-like drawing style
+- Minimal detail, maximum clarity
+- Basic shapes for objects and backgrounds
+- Black lines on white background
+- Playful, accessible aesthetic
+- Easy to understand visual storytelling`,
+
+  gouache_texture: `Gouache and textured painting style with:
+- Rich, opaque paint with visible brushwork
+- Layered textures and impasto effects
+- Matte, velvety finish characteristic of gouache
+- Bold, saturated colors with depth
+- Visible brush strokes adding character
+- Paper or canvas texture showing through
+- Traditional illustration book quality
+- Warm, cozy feeling with organic textures
+- Hand-painted, artisanal appearance`
 };
 
 export function getArtStyleDescription(style: string): string {
     const normalizedStyle = style.toLowerCase().replace(/\s+/g, '_');
     return ART_STYLE_DESCRIPTIONS[normalizedStyle] || `${style} illustration style with bright, child-friendly colors`;
+}
+
+export function getColorModeDescription(colorMode: string): string {
+    if (colorMode === 'monochrome') {
+        return `IMPORTANT: Create this illustration in BLACK AND WHITE / MONOCHROME only. 
+Use only grayscale values - pure black, pure white, and shades of gray.
+No color whatsoever. Think classic black and white book illustrations.`;
+    }
+    return ''; // Color mode doesn't need extra description
 }

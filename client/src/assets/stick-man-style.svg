@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#fff"/>
+  <circle cx="100" cy="40" r="20" fill="none" stroke="#333" stroke-width="3"/>
+  <line x1="100" y1="60" x2="100" y2="120" stroke="#333" stroke-width="3"/>
+  <line x1="100" y1="75" x2="60" y2="100" stroke="#333" stroke-width="3"/>
+  <line x1="100" y1="75" x2="140" y2="100" stroke="#333" stroke-width="3"/>
+  <line x1="100" y1="120" x2="70" y2="165" stroke="#333" stroke-width="3"/>
+  <line x1="100" y1="120" x2="130" y2="165" stroke="#333" stroke-width="3"/>
+  <circle cx="92" cy="35" r="3" fill="#333"/>
+  <circle cx="108" cy="35" r="3" fill="#333"/>
+  <path d="M92 48 Q100 55 108 48" stroke="#333" stroke-width="2" fill="none"/>
+  <text x="100" y="190" text-anchor="middle" font-size="10" fill="#666">Stick Man</text>
+</svg>

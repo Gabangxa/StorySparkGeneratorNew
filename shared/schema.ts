@@ -11,8 +11,19 @@ export const users = pgTable("users", {
 });
 
 // Story art styles
-export const ART_STYLES = ["anime", "watercolor", "3d_cartoon", "pixel_art", "comic_book"] as const;
+export const ART_STYLES = ["anime", "watercolor", "3d_cartoon", "pixel_art", "comic_book", "minimalist_caricature", "line_art", "stick_man", "gouache_texture"] as const;
 export type ArtStyle = typeof ART_STYLES[number];
+
+// Color modes for art
+export const COLOR_MODES = ["color", "monochrome"] as const;
+export type ColorMode = typeof COLOR_MODES[number];
+
+// Art styles that should NOT have monochrome option (color-dependent styles)
+export const COLOR_ONLY_STYLES: ArtStyle[] = ["watercolor", "3d_cartoon", "gouache_texture"];
+
+// Character description modes
+export const DESCRIPTION_MODES = ["merge", "override"] as const;
+export type DescriptionMode = typeof DESCRIPTION_MODES[number];
 
 // Story types 
 export const STORY_TYPES = ["adventure", "moral_lesson", "fun_story"] as const;
@@ -82,6 +93,7 @@ export const storyFormSchema = z.object({
   artStyle: z.enum(ART_STYLES, {
     errorMap: () => ({ message: "Please select an art style" }),
   }),
+  colorMode: z.enum(COLOR_MODES).default("color"),
   layoutType: z.enum(LAYOUT_TYPES, {
     errorMap: () => ({ message: "Please select a layout" }),
   }),

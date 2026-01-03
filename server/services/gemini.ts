@@ -2,13 +2,14 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { StoryEntity } from "@shared/schema";
 import { storageService } from "./storage";
-import { getArtStyleDescription } from "./constants";
+import { getArtStyleDescription, getColorModeDescription } from "./constants";
 
 const geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface GeminiImageOptions {
   prompt: string;
   referenceImagePaths?: string[]; // Paths (keys in object storage)
+  colorMode?: string; // "color" or "monochrome"
 }
 
 export class GeminiService {
@@ -27,8 +28,15 @@ export class GeminiService {
 
   async generateImage(options: string | GeminiImageOptions): Promise<string> {
     try {
-      const prompt = typeof options === 'string' ? options : options.prompt;
+      let prompt = typeof options === 'string' ? options : options.prompt;
       const referenceImagePaths = typeof options === 'string' ? [] : (options.referenceImagePaths || []);
+      const colorMode = typeof options === 'string' ? 'color' : (options.colorMode || 'color');
+
+      // Add color mode description to the prompt
+      const colorModeDesc = getColorModeDescription(colorMode);
+      if (colorModeDesc) {
+        prompt = `${colorModeDesc}\n\n${prompt}`;
+      }
 
       console.log("Generating image with Gemini (Nano Banana):", prompt.substring(0, 100) + "...");
 

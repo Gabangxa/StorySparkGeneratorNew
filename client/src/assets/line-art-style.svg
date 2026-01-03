@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#fff"/>
+  <circle cx="100" cy="70" r="35" fill="none" stroke="#333" stroke-width="2"/>
+  <circle cx="88" cy="65" r="4" fill="#333"/>
+  <circle cx="112" cy="65" r="4" fill="#333"/>
+  <path d="M88 80 Q100 92 112 80" stroke="#333" stroke-width="2" fill="none"/>
+  <path d="M65 70 Q50 50 60 30" stroke="#333" stroke-width="2" fill="none"/>
+  <path d="M135 70 Q150 50 140 30" stroke="#333" stroke-width="2" fill="none"/>
+  <line x1="100" y1="105" x2="100" y2="155" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="125" x2="70" y2="145" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="125" x2="130" y2="145" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="155" x2="80" y2="185" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="155" x2="120" y2="185" stroke="#333" stroke-width="2"/>
+  <text x="100" y="198" text-anchor="middle" font-size="10" fill="#666">Line Art</text>
+</svg>

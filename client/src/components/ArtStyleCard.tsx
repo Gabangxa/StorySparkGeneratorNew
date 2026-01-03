@@ -8,7 +8,11 @@ import {
   watercolorStyleImage,
   cartoon3dStyleImage,
   pixelArtStyleImage,
-  comicBookStyleImage
+  comicBookStyleImage,
+  minimalistCaricatureStyleImage,
+  lineArtStyleImage,
+  stickManStyleImage,
+  gouacheTextureStyleImage
 } from "@/assets";
 
 interface ArtStyleCardProps {
@@ -17,7 +21,7 @@ interface ArtStyleCardProps {
   onClick: (style: ArtStyle) => void;
 }
 
-const artStyleConfig = {
+const artStyleConfig: Record<ArtStyle, { title: string; description: string; imageUrl: string }> = {
   anime: {
     title: "Anime/Manga",
     description: "Expressive characters with Japanese-inspired aesthetics",
@@ -42,6 +46,26 @@ const artStyleConfig = {
     title: "Comic Book",
     description: "Bold, action-oriented illustrations with outlines",
     imageUrl: comicBookStyleImage
+  },
+  minimalist_caricature: {
+    title: "Minimalist Caricature",
+    description: "Simple, exaggerated features with clean lines",
+    imageUrl: minimalistCaricatureStyleImage
+  },
+  line_art: {
+    title: "Line Art",
+    description: "Clean outlines and strokes without fills",
+    imageUrl: lineArtStyleImage
+  },
+  stick_man: {
+    title: "Stick Man Style",
+    description: "Simple stick figure illustrations",
+    imageUrl: stickManStyleImage
+  },
+  gouache_texture: {
+    title: "Gouache & Texture",
+    description: "Rich, textured paint-like illustrations",
+    imageUrl: gouacheTextureStyleImage
   }
 };
 

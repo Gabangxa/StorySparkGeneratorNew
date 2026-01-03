@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { 
   AGE_RANGES, AgeRange, ART_STYLES, ArtStyle, LAYOUT_TYPES, LayoutType, 
-  STORY_TYPES, StoryType, storyFormSchema, StoryFormData, StoryEntityWithAppearances 
+  STORY_TYPES, StoryType, storyFormSchema, StoryFormData, StoryEntityWithAppearances,
+  COLOR_MODES, ColorMode, COLOR_ONLY_STYLES, DESCRIPTION_MODES, DescriptionMode
 } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +25,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   ArrowLeft, ArrowRight, Loader2, WandSparkles, 
-  Users, MapPin, Package2, Eye, BookOpen, ImageIcon 
+  Users, MapPin, Package2, Eye, BookOpen, ImageIcon, Square, Info, X
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StoryTypeCard from "@/components/StoryTypeCard";
 import ArtStyleCard from "@/components/ArtStyleCard";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +59,9 @@ export default function CreateStory() {
   
   const hasCredits = (creditsData?.credits ?? 0) > 0;
 
+  const [descriptionModes, setDescriptionModes] = useState<Record<string, DescriptionMode>>({});
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
   const form = useForm({
     resolver: zodResolver(storyFormSchema),
     defaultValues: {
@@ -64,9 +70,13 @@ export default function CreateStory() {
       storyType: "fun_story" as StoryType,
       ageRange: "6-8" as AgeRange,
       artStyle: "anime" as ArtStyle,
+      colorMode: "color" as ColorMode,
       layoutType: "side_by_side" as LayoutType
     }
   });
+
+  const selectedArtStyle = form.watch("artStyle");
+  const showMonochromeOption = !COLOR_ONLY_STYLES.includes(selectedArtStyle);
 
   const { mutate: createStory, isPending } = useMutation({
     mutationFn: async (data: StoryFormData) => {
@@ -234,6 +244,10 @@ export default function CreateStory() {
   // Mutation for generating the complete final story with images
   const { mutate: generateFinalStory, isPending: isGeneratingFinal } = useMutation({
     mutationFn: async (data: StoryFormData) => {
+      // Create a new abort controller for this request
+      const controller = new AbortController();
+      setAbortController(controller);
+      
       // Include approved character images in the request
       const approvedCharacterUrls: Record<string, string> = {};
       Object.entries(approvedCharacters).forEach(([characterId, isApproved]) => {
@@ -246,10 +260,11 @@ export default function CreateStory() {
         ...data,
         pages: storyText,
         characterImages: approvedCharacterUrls
-      });
+      }, controller.signal);
       return response.json();
     },
     onSuccess: (data) => {
+      setAbortController(null);
       toast({
         title: "Story created successfully!",
         description: "Your illustrated storybook is ready.",
@@ -258,6 +273,15 @@ export default function CreateStory() {
       navigate(`/stories/${data.id}`);
     },
     onError: (error) => {
+      setAbortController(null);
+      // Don't show error toast if the request was cancelled
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        toast({
+          title: "Generation cancelled",
+          description: "Story generation was stopped.",
+        });
+        return;
+      }
       toast({
         title: "Failed to create story",
         description: error.message || "An unexpected error occurred",
@@ -265,6 +289,19 @@ export default function CreateStory() {
       });
     }
   });
+  
+  // Cancel story generation
+  // Note: This only cancels the frontend request. The backend may continue processing.
+  const cancelGeneration = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      toast({
+        title: "Request cancelled",
+        description: "You won't see the result, but background processing may continue.",
+      });
+    }
+  };
 
   // Original preview mutation - we'll use this later for image generation
   const { mutate: previewStory, isPending: isPreviewLoading } = useMutation({
@@ -409,7 +446,7 @@ export default function CreateStory() {
                 <FormControl>
                   <Textarea 
                     placeholder="Describe your story idea in detail. Include characters, setting, and any specific plot points you'd like to include..."
-                    className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-[#FF6B6B]"
+                    className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-[#FF6B6B] min-h-[120px] max-h-[400px] resize-y"
                     rows={4}
                     {...field} 
                   />
@@ -823,12 +860,74 @@ export default function CreateStory() {
                       <Textarea
                         value={characterDescriptions[character.id] || ''}
                         onChange={(e) => updateCharacterDescription(character.id, e.target.value)}
-                        className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-[#FF6B6B] min-h-[120px]"
+                        className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-[#FF6B6B] min-h-[120px] resize-y"
                         placeholder={`Describe how ${character.name} should look (appearance, clothing, colors, etc.)...`}
                       />
                       <p className="text-xs text-gray-500 mt-2">
                         Tip: Include details about age, height, hair, eyes, skin, clothing, and any unique features.
                       </p>
+                      
+                      {characterDescriptions[character.id] && characterDescriptions[character.id].length > 0 && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm font-medium text-gray-700">Description Mode:</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>Choose how your custom description interacts with the AI's interpretation.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <Select
+                            value={descriptionModes[character.id] || 'merge'}
+                            onValueChange={(value: DescriptionMode) => {
+                              setDescriptionModes(prev => ({
+                                ...prev,
+                                [character.id]: value
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="w-full" data-testid={`description-mode-${character.id}`}>
+                              <SelectValue placeholder="Select mode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <SelectItem value="merge" data-testid="mode-merge">
+                                      Merge with AI
+                                    </SelectItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <p>Combines your description with the AI's interpretation for a richer character design.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <SelectItem value="override" data-testid="mode-override">
+                                      Override AI
+                                    </SelectItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <p>Completely replaces the AI's interpretation with your description.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {descriptionModes[character.id] === 'override' 
+                              ? "Your description will completely replace the AI's interpretation."
+                              : "Your description will be combined with the AI's interpretation."}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -904,6 +1003,65 @@ export default function CreateStory() {
                       onClick={(value) => field.onChange(value)}
                     />
                   ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="colorMode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xl font-bold block mb-4">Color Mode</FormLabel>
+                <p className="text-gray-600 mb-4">
+                  Choose whether your illustrations should be in full color or monochrome.
+                </p>
+                <div className="flex gap-4">
+                  <div
+                    className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      field.value === 'color' ? 'border-[#FF6B6B] bg-[#FF6B6B]/5' : 'border-gray-200 hover:border-[#FF6B6B]'
+                    }`}
+                    onClick={() => field.onChange('color')}
+                    data-testid="color-mode-color"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500" />
+                      <div>
+                        <h4 className="font-bold">Full Color</h4>
+                        <p className="text-sm text-gray-600">Vibrant, colorful illustrations</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {showMonochromeOption ? (
+                    <div
+                      className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        field.value === 'monochrome' ? 'border-[#FF6B6B] bg-[#FF6B6B]/5' : 'border-gray-200 hover:border-[#FF6B6B]'
+                      }`}
+                      onClick={() => field.onChange('monochrome')}
+                      data-testid="color-mode-monochrome"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-gray-800 via-gray-500 to-gray-300" />
+                        <div>
+                          <h4 className="font-bold">Monochrome</h4>
+                          <p className="text-sm text-gray-600">Black & white illustrations</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 p-4 border-2 rounded-xl border-gray-100 bg-gray-50 opacity-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-gray-400 via-gray-300 to-gray-200" />
+                        <div>
+                          <h4 className="font-bold text-gray-400">Monochrome</h4>
+                          <p className="text-sm text-gray-400">Not available for this style</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <FormMessage />
               </FormItem>
@@ -1107,14 +1265,37 @@ export default function CreateStory() {
             Back to Art Style
           </Button>
           
-          <Button 
-            onClick={() => generateFinalStory(form.getValues())}
-            disabled={characters.length > 0 && Object.values(approvedCharacters).every(approved => !approved) || isGeneratingFinal}
-            className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50"
-          >
-            {isGeneratingFinal ? 'Creating Story...' : 'Generate Final Story'}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex gap-3">
+            {isGeneratingFinal && (
+              <Button 
+                onClick={cancelGeneration}
+                variant="outline"
+                className="border-2 border-[#FF6B6B] text-[#FF6B6B] font-bold py-3 px-6 rounded-xl hover:bg-[#FF6B6B]/10"
+                data-testid="cancel-generation-button"
+              >
+                <X className="mr-2 h-5 w-5" />
+                Cancel
+              </Button>
+            )}
+            <Button 
+              onClick={() => generateFinalStory(form.getValues())}
+              disabled={characters.length > 0 && Object.values(approvedCharacters).every(approved => !approved) || isGeneratingFinal}
+              className="bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50"
+              data-testid="generate-final-story-button"
+            >
+              {isGeneratingFinal ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Creating Story...
+                </>
+              ) : (
+                <>
+                  Generate Final Story
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     );

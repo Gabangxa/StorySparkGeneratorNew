@@ -96,6 +96,7 @@ interface GenerateImageOptions {
   prompt: string;                                  // Base prompt describing the image to be generated
   entityReferenceIds?: { [key: string]: string };  // Map of entity IDs to generation IDs for consistency
   artStyle?: string;                               // Artistic style for the illustration (anime, watercolor, etc.)
+  colorMode?: string;                              // Color mode: "color" or "monochrome"
   entities?: StoryEntity[];                        // Story entities to highlight in the prompt for consistency
   characterReferenceURLs?: { [key: string]: string };  // URLs of previous character images to reference
   characterReferencePaths?: string[];              // Filesystem paths to character reference images for Gemini
@@ -124,6 +125,7 @@ export async function generateImage(
     let finalPrompt: string;
     let entityReferenceIds: { [key: string]: string } = {};
     let artStyle: string = 'colorful';
+    let colorMode: string = 'color';
     let entities: StoryEntity[] = [];
     
     // Additional options for character reference
@@ -141,6 +143,7 @@ export async function generateImage(
       finalPrompt = options.prompt;
       entityReferenceIds = options.entityReferenceIds || {};
       artStyle = options.artStyle || 'colorful';
+      colorMode = options.colorMode || 'color';
       entities = options.entities || [];
       characterReferenceURLs = options.characterReferenceURLs || {};
       characterReferencePaths = options.characterReferencePaths || [];
@@ -281,7 +284,8 @@ ${wrappedPrompt}`;
     // Use Gemini Service to generate image
     const imageUrl = await geminiService.generateImage({
       prompt: wrappedPrompt,
-      referenceImagePaths: characterReferencePaths
+      referenceImagePaths: characterReferencePaths,
+      colorMode
     });
     
     if (typeof prompt === 'string') {

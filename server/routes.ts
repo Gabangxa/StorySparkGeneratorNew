@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { title, description, storyType, ageRange, artStyle, layoutType } = parsedBody.data;
+      const { title, description, storyType, ageRange, artStyle, colorMode, layoutType } = parsedBody.data;
 
       // Use existing story text and entities if provided, otherwise generate new story
       let generatedStory;
@@ -284,6 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           prompt: page.imagePrompt,                   // Base image description
           entityReferenceIds: pageEntityRefs,         // References to maintain visual consistency
           artStyle,                                   // User-selected art style
+          colorMode,                                  // User-selected color mode (color or monochrome)
           entities: allRelevantEntities,              // ALL relevant entities including those from other pages
           characterReferencePaths,                    // Paths to character reference images (from Step 5 + earlier pages)
           isFirstPage: index === 0                    // Flag if this is the first page of the story
