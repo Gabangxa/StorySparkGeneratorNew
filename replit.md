@@ -2,9 +2,18 @@
 
 ## Overview
 
-StoryWonder is a full-stack web application that generates personalized, illustrated children's storybooks using AI. Users can create custom stories by specifying characters, themes, age ranges, and art styles. The application uses OpenAI's GPT models for story generation and Google's Gemini AI (Nano Banana model) for image generation, producing multi-page storybooks with consistent character appearances and downloadable PDF outputs.
+StoryWonder is a full-stack web application that generates personalized, illustrated children's storybooks using AI. Users can create custom stories by specifying characters, themes, age ranges, and art styles. The application uses OpenAI's GPT models for story generation and Google's Gemini AI (gemini-2.5-flash-preview-05-20) for image generation, producing multi-page storybooks with consistent character appearances and downloadable PDF outputs.
 
-The application is built as a modern React single-page application with an Express backend, featuring a multi-step story creation wizard, real-time preview capabilities, and PDF export functionality.
+The application is built as a modern React single-page application with an Express backend, featuring a multi-step story creation wizard (6 steps including character approval), real-time preview capabilities, PDF export functionality, and a credits-based usage system.
+
+## Key Features
+
+- **Replit Auth Integration**: User authentication supporting Google, GitHub, and email/password login
+- **Credits System**: Each user starts with 3 free credits; 1 credit = 1 story generation
+- **Age-Appropriate Content**: Stories tailored for 4 age ranges (0-2, 3-5, 6-8, 9-12) with vocabulary, complexity, themes, and visual styles adjusted accordingly
+- **Character Review System**: Users can approve/regenerate character illustrations before story generation
+- **Scene Variety**: Each page gets unique camera angles, poses, and compositions to prevent repetitive images
+- **Text-Free Images**: Explicit instructions prevent AI from rendering text/labels in generated illustrations
 
 ## User Preferences
 
