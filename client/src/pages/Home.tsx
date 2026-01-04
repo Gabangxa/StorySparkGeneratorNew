@@ -27,13 +27,6 @@ export default function Home() {
                 >
                   <Link href="/create">Create a Story</Link>
                 </Button>
-                <Button 
-                  variant="outline"
-                  asChild
-                  className="border-2 border-[#FF6B6B] text-[#FF6B6B] hover:bg-[#FF6B6B]/5 py-3 px-8 rounded-xl text-lg"
-                >
-                  <Link href="/my-stories">See Examples</Link>
-                </Button>
               </div>
             </div>
             <div className="md:w-1/2 flex justify-center">
