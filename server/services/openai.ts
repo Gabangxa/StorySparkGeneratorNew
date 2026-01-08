@@ -4,30 +4,34 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Age-range specific guidance for story text generation
-const AGE_GUIDANCE: Record<string, { vocabulary: string; complexity: string; themes: string; sentenceLength: string }> = {
+const AGE_GUIDANCE: Record<string, { vocabulary: string; complexity: string; themes: string; sentenceLength: string; totalStoryLength: string }> = {
   "0-2": {
     vocabulary: "Use only the simplest words (1-2 syllables). Repeat key words often. Use animal sounds and onomatopoeia (woof, splash, yay!).",
-    complexity: "Very simple sentences, 3-6 words each. No complex plot - focus on simple actions and feelings.",
+    complexity: "Very simple sentences. No complex plot - focus on simple actions and feelings. Board book style with minimal text.",
     themes: "Focus on familiar concepts: animals, family, colors, shapes, daily routines, hugs, and love.",
-    sentenceLength: "Maximum 6 words per sentence. 1-2 sentences per page."
+    sentenceLength: "1-5 words per sentence. 0-2 sentences per page (often just single words or phrases).",
+    totalStoryLength: "Target 50-300 words total for the entire story."
   },
   "3-5": {
     vocabulary: "Use simple, everyday words. Some fun new words are okay but explain through context. Include rhymes and repetition.",
-    complexity: "Simple sentences with basic cause-and-effect. Clear beginning, middle, and happy ending.",
+    complexity: "Simple sentences with basic cause-and-effect. Clear beginning, middle, and happy ending. Classic picture book style.",
     themes: "Friendship, sharing, being brave, family, animals, magic, and simple adventures. Gentle lessons about kindness.",
-    sentenceLength: "5-12 words per sentence. 2-4 sentences per page."
+    sentenceLength: "5-10 words per sentence. 1-3 sentences per page.",
+    totalStoryLength: "Target 300-800 words total for the entire story."
   },
   "6-8": {
     vocabulary: "Age-appropriate vocabulary with some challenging words. Can include light humor and wordplay.",
-    complexity: "Multi-step plots with clear story arcs. Characters can face and overcome obstacles. Include dialogue.",
+    complexity: "Multi-step plots with clear story arcs. Characters can face and overcome obstacles. Include dialogue. Early reader to early chapter book style.",
     themes: "Adventure, friendship, problem-solving, being different is okay, teamwork, courage. Can handle mild suspense.",
-    sentenceLength: "8-15 words per sentence. 3-5 sentences per page."
+    sentenceLength: "8-15 words per sentence. 3-6 sentences per page.",
+    totalStoryLength: "Target 1,000-10,000 words total for the entire story."
   },
   "9-12": {
     vocabulary: "Richer vocabulary with descriptive language. Metaphors and figurative language are appropriate.",
-    complexity: "Complex plots with subplots possible. Characters show growth and make meaningful choices. Moral complexity is fine.",
+    complexity: "Complex plots with subplots possible. Characters show growth and make meaningful choices. Moral complexity is fine. Chapter book to lower middle grade style.",
     themes: "Identity, responsibility, justice, loyalty, growing up. Can explore emotions like disappointment or worry with resolution.",
-    sentenceLength: "10-20 words per sentence. 4-6 sentences per page."
+    sentenceLength: "12-25 words per sentence. 4-8 sentences per page (or more in chapter-style pages).",
+    totalStoryLength: "Target 10,000-40,000 words total for the entire story."
   }
 };
 
@@ -122,6 +126,7 @@ export class OpenAIService {
     STORY COMPLEXITY: ${ageGuidance.complexity}
     THEMES: ${ageGuidance.themes}
     SENTENCE LENGTH: ${ageGuidance.sentenceLength}
+    TOTAL STORY LENGTH: ${ageGuidance.totalStoryLength}
 
     First, identify the main characters, locations, and important objects that will appear in the story.
     Then create a ${numberOfPages}-page coherent narrative with these elements.
